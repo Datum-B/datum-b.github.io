@@ -202,12 +202,21 @@ async function loadCompany(key){key=String(key||'').replace(/\D/g,'');if(key.len
   try{localStorage.setItem('datum:last',key)}catch(e){}}
 (async()=>{try{if(window.claude&&claude.use){DB=await claude.use('db');if(DB){try{const c=await DB.doc('meta/changelog').get();const v=c&&(c.data?c.data():c);if(v&&v.items)CHANGELOG=v.items}catch(e){}}}}catch(e){DB=null}
   paintSync();
-  try{const last=localStorage.getItem('datum:last');if(last&&S.screen==='welcome'){const i=document.getElementById('inn_gate');if(i)i.value=last}}catch(e){}})();
+  /* один раз вошёл — дальше приложение открывается сразу на том же месте */
+  try{const last=localStorage.getItem('datum:last');
+    if(last&&S.screen==='welcome'){let data=null;
+      try{data=JSON.parse(localStorage.getItem('datum:'+last)||'null')}catch(e){}
+      if(!data&&DB){try{const d=await DB.doc('companies/'+last).get();data=d&&(d.data?d.data():d)||null;if(data&&data.exists===false)data=null}catch(e){}}
+      if(data&&data.company){S.key=last;SAVE_KEYS.forEach(k=>{if(data[k]!==undefined)S[k]=data[k]});if(S.screen==='welcome')S.screen='app';render()}
+      else{const i=document.getElementById('inn_gate');if(i)i.value=last}}}catch(e){}})();
 
+let _saveT=null;
 function render(){
   el().innerHTML=(S.screen==='welcome'?welcomeView():S.screen==='wizard'?wizardView():appView())+feedbackUI();
   paintSync();
+  if(S.key&&S.screen!=='welcome'){clearTimeout(_saveT);_saveT=setTimeout(persist,400)}
 }
+window.addEventListener('beforeunload',()=>{if(S.key&&S.screen!=='welcome'){try{localStorage.setItem('datum:'+S.key,JSON.stringify(snapshot()));localStorage.setItem('datum:last',S.key)}catch(e){}}});
 function toast(t){const p=document.querySelector('.toast');if(p)p.remove();const d=document.createElement('div');d.className='toast';d.innerHTML='<span style="color:#DBA765">●</span>'+t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
 function theme(){document.documentElement.classList.toggle('dark')}
 function go(p){S.page=p;render();window.scrollTo(0,0)}
@@ -448,7 +457,7 @@ function skipStep(){S.step++;if(S.step>4){S.screen='app';S.step=0}render()}
 /* шаг 1 */
 function stepCompany(){const c=S.company;return `<div class="card rise">
   <div class="eyebrow" style="color:var(--o700)">Шаг 1</div><h2 style="margin-top:8px">Компания</h2>
-  <p class="lede" style="margin-top:10px;font-size:14.5px">Реквизиты компании и четыре поля профиля — по ним система решает, подходит ли вам закупка. В пилотной версии реестр не подключён: реквизиты заполняются один раз вручную.</p>
+  <p class="lede" style="margin-top:10px;font-size:14.5px">Реквизиты компании и четыре поля профиля — по ним система решает, подходит ли вам закупка. Заполняются один раз: система запомнит их на этом устройстве и в облаке.</p>
   <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:20px;max-width:480px;align-items:end">
     <div class="field"><span class="eyebrow">ИНН организации</span><input id="inn" value="${esc(c?c.inn:(S.key||''))}" placeholder="10 или 12 цифр" inputmode="numeric"></div><button class="btn" onclick="lookupInn()">${c?'Обновить':'Продолжить'}</button></div>
   ${c?`<div style="display:grid;gap:8px;margin-top:18px">
@@ -459,10 +468,10 @@ function stepCompany(){const c=S.company;return `<div class="card rise">
   ${nav(false,c?'saveCompany()':'lookupInn()',c?'Сохранить и дальше':'Продолжить')}</div>`}
 function lookupInn(){const inn=((document.getElementById('inn')||{}).value||'').replace(/\D/g,'');
   if(inn.length<10){toast('ИНН — 10 или 12 цифр');return}
-  if(!S.key)S.key=inn;
+  if(!S.key)S.key=inn;try{localStorage.setItem('datum:last',S.key)}catch(e){}
   if(inn==='7817145422'){busy('Подставляем реквизиты…');setTimeout(()=>{S.company={inn,fromRegistry:true,name:'ООО «СК ГОРИЗОНТ-А»',ogrn:'1257800032995',kpp:'781701001',addr:'196624, Санкт-Петербург, пос. Шушары, 2-й Бадаевский проезд, д. 3, корп. 1, лит. А, офис 312',head:'Генеральный директор Аракелян Мисак Айказович',tax:'УСН 15 % — НДС не облагается',spec:'ремонт, отделочные работы, кровля, инженерные сети',region:'Санкт-Петербург',cap:'25 000 000 ₽',crew:'8'};done()},700);return}
   S.company=Object.assign({inn,fromRegistry:false,name:'',ogrn:'',kpp:'',addr:'',head:'',tax:'',spec:'',region:'',cap:'',crew:''},S.company||{},{inn});render();
-  toast('Реестр в пилоте не подключён — заполните реквизиты, это один раз')}
+  toast('Заполните реквизиты один раз — дальше они сохранятся и подставятся сами')}
 function saveCompany(){['name','ogrn','kpp','addr','head','tax','spec','region','cap','crew'].forEach(k=>{const e=document.getElementById(k);if(e)S.company[k]=e.value.trim()});
   if(!S.company.name){toast('Укажите наименование компании');return}
   S.step=1;render();toast('Компания сохранена')}
