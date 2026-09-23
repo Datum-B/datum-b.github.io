@@ -1,1 +1,33 @@
-{"updatedAt": null, "source": "zakupki.gov.ru · RSS", "status": "pending", "message": "Робот ещё не запускался", "searches": [], "tenders": []}
+{
+ "updatedAt": "2026-09-23T16:31:33+00:00",
+ "source": "zakupki.gov.ru · RSS",
+ "status": "error",
+ "searches": [
+  {
+   "id": "spb-remont",
+   "name": "Ремонт помещений · СПб",
+   "count": 0,
+   "error": "<urlopen error timed out>"
+  },
+  {
+   "id": "spb-krovlya",
+   "name": "Кровля · СПб",
+   "count": 0,
+   "error": "<urlopen error timed out>"
+  },
+  {
+   "id": "spb-otdelka",
+   "name": "Отделочные работы · СПб",
+   "count": 0,
+   "error": "<urlopen error timed out>"
+  },
+  {
+   "id": "spb-school",
+   "name": "Ремонт школ и садов · СПб",
+   "count": 0,
+   "error": "<urlopen error timed out>"
+  }
+ ],
+ "tenders": [],
+ "message": "ЕИС не ответила роботу: spb-remont: URLError: <urlopen error timed out>; spb-krovlya: URLError: <urlopen error timed out>; spb-otdelka: URLError: <urlopen error timed out>; spb-school: URLError: <urlopen error timed out>"
+}
