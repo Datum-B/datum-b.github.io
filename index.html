@@ -169,11 +169,11 @@ const el=()=>document.getElementById('app');
 const MARK=(sz=22,ink='currentColor',dot='#B9762B')=>`<svg viewBox="0 0 32 32" width="${sz}" height="${sz}" aria-label="DATUM"><path d="M6.4 8.8 L26 13.4 L14 26.8 Z" fill="none" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/><g fill="${ink}"><circle cx="6.4" cy="8.8" r="2.3"/><circle cx="26" cy="13.4" r="2.3"/><circle cx="14" cy="26.8" r="2.3"/></g><circle cx="15.6" cy="16.2" r="3.4" fill="${dot}"/></svg>`;
 
 const VERSION='0.1 · пилот';
-let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false};
+let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false,tenders:[],eis:null,eisErr:null,tq:'',tsearch:'',tview:'eis'};
 
 /* ═══ Сохранение: база страницы (общая для всех, кто открыл ссылку) + запас в браузере ═══ */
 let DB=null, CHANGELOG=null;
-const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page'];
+const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page','tenders'];
 function snapshot(){const o={};SAVE_KEYS.forEach(k=>o[k]=S[k]);o.updatedAt=new Date().toISOString();o.version=VERSION;return o}
 async function persist(){if(!S.key)return;const data=snapshot();
   try{localStorage.setItem('datum:'+S.key,JSON.stringify(data));localStorage.setItem('datum:last',S.key)}catch(e){}
@@ -643,9 +643,81 @@ function pFinance(){const o=S.objects[0];if(!o)return head('Контроль','�
   return head('Контроль','Деньги',`Контракт № ${esc(o.number||'—')}${o.payTerm?' · оплата в течение '+o.payTerm+' дней после приёмки':''}`)+`<div class="page"><div class="grid g4">${stat('Цена контракта',o.price?m(o.price):'—','<span class="chip">доход по объекту</span>')}${stat('Получено',m(0),'<span class="chip warn">актов ещё не было</span>')}${stat('Затраты',m(0),'<span class="chip">с первой поставкой</span>')}${stat('Аванс',esc(o.advance||'—'),`<span class="chip ${/не /.test(o.advance||'')?'bad':''}">${/не /.test(o.advance||'')?'работы финансируем сами':'по контракту'}</span>`)}</div>
   <div class="rec" style="margin-top:14px"><div class="eyebrow">Что система уже видит по деньгам</div><div style="display:grid;gap:10px;margin-top:10px;max-width:680px">${[[o.advance||'Условие аванса не найдено','Первые недели работ обычно финансируются из своих средств — главный риск по кассе.'],[o.payTerm?'Оплата через '+o.payTerm+' дней после подписания приёмки':'Срок оплаты не найден в документе','Срок считается от подписи заказчика, поэтому система следит за датой передачи КС-2.'],[o.penalty||'Неустойка не найдена','Начисляется при просрочке — система предупредит за две недели до срока.']].map(([t,d])=>`<div style="display:flex;gap:10px"><span class="dot" style="background:var(--o500);margin-top:8px"></span><div><div style="font-weight:600;font-size:14px">${esc(t)}</div><div style="font-size:13px;color:var(--ink-500);margin-top:3px">${d}</div></div></div>`).join('')}</div></div></div>`}
 
-function pTenders(){const c=S.company;return head('Продажи','Закупки',c?'Профиль готов — система может искать под вас':'Сначала заполните профиль',`<button class="btn pri sm" onclick="toast('Автопоиск сохранён: подходящие закупки будут приходить в Telegram с оценкой')">Настроить автопоиск</button>`)+`<div class="page">${c?`<div class="box rise" style="padding:22px"><div class="eyebrow" style="color:var(--o700)">По каким признакам отбираем</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px">${[['Виды работ',c.spec],['Регион',c.region],['Потолок суммы',c.cap],['Свободные бригады',c.crew]].map(([l,v])=>`<div class="box soft" style="padding:13px"><div class="eyebrow">${l}</div><div style="font-size:14px;margin-top:6px">${esc(v)}</div></div>`).join('')}</div><p style="font-size:13.5px;color:var(--ink-500);margin-top:14px;line-height:1.6;max-width:680px">Каждая закупка получит оценку от 0 до 100 с объяснением: профиль, аванс и отсрочка, число участников, загрузка бригад. Решение за вами.</p></div>
-  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Подключение к ЕИС</div><div class="s">Открытый доступ закрыт с 2025 года — нужен токен вашей организации</div></div></div><div style="padding:16px 20px;display:grid;gap:10px">${[['Организация зарегистрирована в ЕИС','есть'],['Квалифицированная подпись','есть'],['Токен из личного кабинета ЕИС','получить'],['Адрес сервиса данных','выдаётся с токеном']].map(([t,d],i)=>`<div style="display:flex;gap:12px;align-items:center"><b style="color:var(--o500);font-size:12px">0${i+1}</b><span style="flex:1;font-size:14px">${t}</span><span class="chip ${i<2?'ok':''}">${d}</span></div>`).join('')}</div></div>`:empty('Профиль не заполнен','Чтобы отбирать закупки, системе нужны ваши виды работ, регион, посильная сумма и число бригад.','Заполнить профиль',"S.screen='wizard';S.step=0;render()")}</div>`}
-
+/* ═══ Закупки: живые данные ЕИС, которые робот кладёт в data/tenders.json ═══ */
+async function loadEis(force){
+  if(S.eis&&!force)return;
+  try{const r=await fetch('data/tenders.json?'+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+    S.eis=await r.json();S.eisErr=null}
+  catch(e){S.eisErr='Не удалось загрузить данные ЕИС: '+(e.message||e);if(!S.eis)S.eis={status:'error',tenders:[],searches:[]}}
+  if(S.page==='tenders')render();
+}
+const numRu=v=>v==null?'—':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:0})+' ₽';
+function grade(t){
+  /* Оценка 0–100 по профилю компании: понятная, без «магии» */
+  const c=S.company||{};const f=[];
+  const spec=(c.spec||'').toLowerCase().split(/[,;]/).map(x=>x.trim()).filter(Boolean);
+  const title=(t.title||'').toLowerCase();
+  const hit=spec.filter(w=>w&&title.includes(w.split(' ')[0]));
+  f.push(['Профиль работ',hit.length?100:35,hit.length?'совпадает: '+hit.join(', '):'вне основной специализации',.3]);
+  const region=(c.region||'').toLowerCase();
+  const rhit=region&&((t.customer||'')+' '+(t.raw||'')).toLowerCase().includes(region.split(' ')[0].replace('санкт-петербург','петербург'));
+  f.push(['География',rhit?100:45,rhit?'домашний регион':'регион не подтверждён',.15]);
+  const cap=parseFloat(String(c.cap||'').replace(/[^\d]/g,''))||0;
+  const price=t.price||0;
+  const sz=!price?60:!cap?60:price<=cap?100:Math.max(0,100-Math.round((price-cap)/cap*120));
+  f.push(['Размер контракта',sz,price?numRu(price)+(cap&&price>cap?' — выше вашего потолка':''):'цена не указана',.25]);
+  const dl=t.deadline?Math.round((parseRu(t.deadline)-Date.now())/864e5):null;
+  const dlp=dl==null?60:dl<0?0:Math.min(100,dl*12+10);
+  f.push(['Время на подготовку',dlp,dl==null?'срок подачи не указан':dl<0?'подача закрыта':dl+' дн. до подачи',.15]);
+  f.push(['Тип закупки',/аукцион/i.test(t.method||'')?80:65,t.method||'способ не указан',.15]);
+  const sw=f.reduce((a,x)=>a+x[3],0);const total=Math.round(f.reduce((a,x)=>a+x[1]*x[3],0)/sw);
+  return {total,verdict:total>=70?'GO':total>=45?'REVIEW':'NO_GO',factors:f,daysLeft:dl};
+}
+function parseRu(s){const m=String(s||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);return m?new Date(+m[3],+m[2]-1,+m[1]).getTime():NaN}
+function takeTender(number){const t=(S.eis?.tenders||[]).find(x=>(x.number||x.url)===number);if(!t)return;
+  if(S.tenders.some(x=>(x.number||x.url)===number)){toast('Уже в работе');return}
+  S.tenders.push({...t,takenAt:new Date().toISOString(),status:'new'});persist();render();toast('Закупка добавлена во вкладку «В работе»')}
+function pTenders(){
+  loadEis(false);
+  const c=S.company;const e=S.eis;
+  const list=(e&&e.tenders||[]).map(t=>({...t,g:grade(t)}));
+  let shown=list;
+  if(S.tsearch)shown=shown.filter(t=>t.searchIds&&t.searchIds.includes(S.tsearch));
+  if(S.tq)shown=shown.filter(t=>((t.title||'')+' '+(t.customer||'')+' '+(t.number||'')).toLowerCase().includes(S.tq.toLowerCase()));
+  shown=[...shown].sort((a,b)=>b.g.total-a.g.total);
+  const taken=new Set(S.tenders.map(t=>t.number||t.url));
+  const upd=e&&e.updatedAt?new Date(e.updatedAt):null;
+  const tone=e?.status==='ok'?'ok':e?.status==='partial'?'warn':'bad';
+  const stMsg=!e?'загружаем…':e.status==='ok'?'ЕИС опрошена '+(upd?upd.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''):
+    e.status==='pending'?'робот ещё не запускался — первые данные появятся после первого запуска':(e.message||'ЕИС недоступна');
+  return head('Продажи','Закупки',c?`Отбор под ваш профиль: ${esc(c.spec||'—')}`:'Заполните профиль компании — по нему считается оценка',
+    `<button class="btn sm" onclick="loadEis(true)">Обновить</button><button class="btn pri sm" onclick="toast('Сохранённые поиски настраиваются в data/searches.json — пришлите мне, что искать, добавлю за минуту')">Настроить поиск</button>`)+`<div class="page">
+  <div style="display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px">
+    ${[['eis','Поиск в ЕИС',list.length],['own','В работе',S.tenders.length]].map(([k,l,n])=>`<button onclick="S.tview='${k}';render()" style="padding:10px 14px;font-size:14px;font-weight:${S.tview===k?700:500};color:${S.tview===k?'var(--ink)':'var(--ink-500)'};border-bottom:2px solid ${S.tview===k?'var(--o500)':'transparent'};margin-bottom:-1px">${l} <span class="eyebrow" style="margin-left:6px">${n}</span></button>`).join('')}</div>
+  ${S.tview==='own'?(S.tenders.length?`<div class="box rise"><table><thead><tr><th>закупка</th><th>заказчик</th><th style="text-align:right">НМЦК</th><th>подача до</th><th>оценка</th><th></th></tr></thead><tbody>${S.tenders.map(t=>{const g=grade(t);return `<tr><td><b>${esc(t.title)}</b><div class="eyebrow" style="margin-top:4px;font-weight:600">№ ${esc(t.number||'')}</div></td><td style="font-size:13px;color:var(--ink-500);max-width:260px">${esc(t.customer||'—')}</td><td class="num" style="text-align:right">${numRu(t.price)}</td><td class="num" style="font-size:13px">${esc(t.deadline||'—')}</td><td><span class="chip ${g.verdict==='GO'?'ok':g.verdict==='REVIEW'?'warn':'bad'}">${g.total} · ${g.verdict==='NO_GO'?'NO-GO':g.verdict}</span></td><td style="text-align:right"><a class="btn sm ghost" href="${esc(t.url)}" target="_blank" rel="noopener">ЕИС ↗</a></td></tr>`}).join('')}</tbody></table></div>`:
+    empty('В работе пока ничего нет','Найдите закупку во вкладке «Поиск в ЕИС» и нажмите «Взять в работу» — она появится здесь с оценкой и сроком подачи.','Открыть поиск',"S.tview='eis';render()")):`
+  <div class="box ${tone==='ok'?'':'soft'}" style="padding:14px 18px;margin-bottom:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <span class="dot" style="background:var(--${tone==='ok'?'ok':tone==='warn'?'warn-500':'danger'})"></span>
+    <span style="font-size:13.5px">${esc(stMsg)}</span>
+    ${S.eisErr?`<span class="chip bad">${esc(S.eisErr)}</span>`:''}
+    <span class="eyebrow" style="margin-left:auto;font-weight:600">источник: zakupki.gov.ru · открытая лента · обновление каждые 2 часа</span></div>
+  <div style="display:grid;grid-template-columns:1fr 260px;gap:10px;margin-bottom:14px">
+    <input id="tq" value="${esc(S.tq)}" placeholder="Название, заказчик, номер закупки" oninput="S.tq=this.value;render();const i=document.getElementById('tq');i.focus();i.setSelectionRange(i.value.length,i.value.length)">
+    <select onchange="S.tsearch=this.value;render()"><option value="">все сохранённые поиски</option>${(e&&e.searches||[]).map(x=>`<option value="${esc(x.id)}"${S.tsearch===x.id?' selected':''}>${esc(x.name)} · ${x.count||0}</option>`).join('')}</select></div>
+  ${shown.length?`<div class="box rise"><div style="overflow-x:auto"><table><thead><tr><th>оценка</th><th>закупка</th><th>заказчик</th><th style="text-align:right">НМЦК</th><th>подача до</th><th style="text-align:right">действие</th></tr></thead><tbody>
+    ${shown.slice(0,120).map(t=>{const g=t.g;const key=t.number||t.url;return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><b class="num" style="font-size:18px;color:var(--${g.verdict==='GO'?'ok':g.verdict==='REVIEW'?'warn':'danger'})">${g.total}</b><span class="chip ${g.verdict==='GO'?'ok':g.verdict==='REVIEW'?'warn':'bad'}">${g.verdict==='NO_GO'?'NO-GO':g.verdict}</span></div>
+        <div class="eyebrow" style="margin-top:6px;font-weight:600;line-height:1.7">${g.factors.map(f=>`<span title="${esc(f[2])}" style="color:${f[1]>=70?'var(--ok)':f[1]>=45?'var(--warn)':'var(--danger)'}">●</span>`).join(' ')}</div></td>
+      <td><div style="font-weight:600;font-size:13.5px;max-width:420px">${esc(t.title)}</div><div class="eyebrow" style="margin-top:4px;font-weight:600">№ ${esc(t.number||'—')} · ${esc(t.law||'')}${t.published?' · размещено '+esc(t.published):''}</div>
+        <div style="font-size:12.5px;color:var(--ink-500);margin-top:5px">${g.factors.map(f=>f[0]+': '+f[2]).join(' · ')}</div></td>
+      <td style="font-size:13px;color:var(--ink-500);max-width:240px">${esc(t.customer||'—')}</td>
+      <td class="num" style="text-align:right;font-weight:600">${numRu(t.price)}</td>
+      <td class="num" style="font-size:13px;color:${g.daysLeft!=null&&g.daysLeft<=3?'var(--danger)':'var(--ink-500)'}">${esc(t.deadline||'—')}${g.daysLeft!=null?`<div class="eyebrow" style="margin-top:3px;font-weight:600">${g.daysLeft<0?'закрыта':'через '+g.daysLeft+' дн.'}</div>`:''}</td>
+      <td style="text-align:right;white-space:nowrap">${taken.has(key)?'<span class="chip ok">в работе</span>':`<button class="btn sm pri" onclick="takeTender('${esc(key)}')">Взять в работу</button>`} <a class="btn sm ghost" href="${esc(t.url)}" target="_blank" rel="noopener">ЕИС ↗</a></td></tr>`}).join('')}
+  </tbody></table></div></div>`:
+  (e&&e.status!=='pending'&&e.status!=='error'&&e.tenders&&e.tenders.length?empty('По этому запросу ничего нет','Сбросьте поиск или выберите другой сохранённый набор.','Показать все',"S.tq='';S.tsearch='';render()"):
+   empty('Данных из ЕИС пока нет',e&&e.status==='error'?'Робот не смог получить ответ от zakupki.gov.ru. Это видно сразу, а не через неделю: '+esc(e.message||''):'Робот опрашивает ЕИС каждые два часа по сохранённым поискам и кладёт результат сюда. Первые закупки появятся после первого запуска.','Обновить','loadEis(true)'))}
+  </div>`}`}
 function pTeam(){if(!S.team.length)return head('Компания','Команда','Пока только вы')+`<div class="page">${empty('Команда приглашается по ссылке','Каждый видит только своё: прораб — свои объекты, снабженец — заявки, тендерный менеджер — закупки. Финансы закрыты для всех, кроме руководителя и бухгалтера.','Пригласить людей',"S.screen='wizard';S.step=1;render()")}</div>`;
   return head('Компания','Команда',`${S.team.length} ${plural(S.team.length,'человек','человека','человек')}`,`<button class="btn pri sm" onclick="S.screen='wizard';S.step=1;render()">Пригласить ещё</button>`)+`<div class="page"><div class="box rise"><table><thead><tr><th>человек</th><th>роль</th><th>что видит</th><th>состояние</th></tr></thead><tbody>${S.team.map(t=>`<tr><td><b>${esc(t.name)}</b><div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(t.contact)}</div></td><td><span class="chip">${t.role}</span></td><td style="font-size:13px;color:var(--ink-500)">${(ROLES.find(r=>r[0]===t.role)||['',''])[1]}</td><td><span class="chip warn">приглашение отправлено</span></td></tr>`).join('')}</tbody></table></div></div>`}
 
