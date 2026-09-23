@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DATUM · первый вход</title>
+<!-- шрифт не блокирует показ страницы: если Google недоступен, работает системный -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+<!-- библиотеки лежат на этом же сайте — никаких внешних сетей -->
+<script defer src="jszip.min.js"></script>
+<script defer src="pdf.min.js"></script>
+<script defer src="xlsx.full.min.js"></script>
+<style>
+/* ═══ DATUM · токены бренда (светлая тема — основная) ═══ */
+:root{
+  --ink:#0B0D10;--ink-700:#2A323C;--ink-500:#5A6675;--ink-300:#A3AEBB;--ink-200:#CBD3DC;
+  --line:#E4E9EF;--bg:#FFFFFF;--surface:#F4F6F9;--surface-2:#FAFBFC;
+  --o50:#FBF3E9;--o100:#F4E3CC;--o300:#DBA765;--o500:#B9762B;--o600:#9A5F1F;--o700:#7C4A16;
+  --ok:#046C4E;--ok-50:#F0FBF6;--warn:#92400E;--warn-500:#D97706;--warn-50:#FFFBEB;--danger:#B91C1C;--danger-50:#FEF2F2;
+  --shadow:0 10px 30px -18px rgba(11,13,16,.28);
+  --r:12px;--r-sm:8px;--r-lg:18px;
+  --accent:var(--o700);--btn:var(--o600);
+  color-scheme:light;
+}
+html.dark{
+  --ink:#F4F6F9;--ink-700:#CBD3DC;--ink-500:#A3AEBB;--ink-300:#7A8797;--ink-200:#3D4753;
+  --line:#2A323C;--bg:#0B0D10;--surface:#14181D;--surface-2:#171C22;
+  --o50:#241A0E;--o100:#3E240A;--accent:#DBA765;--btn:#B9762B;
+  --ok:#3DD598;--ok-50:#12271F;--warn:#F0A45C;--warn-500:#D97706;--warn-50:#2A1E12;--danger:#F87171;--danger-50:#2C1618;
+  --shadow:0 20px 48px -18px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.55 Inter,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+::selection{background:var(--o100);color:var(--ink)}
+:focus-visible{outline:2px solid var(--o500);outline-offset:2px}
+
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-500);font-weight:700}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{letter-spacing:-.02em;line-height:1.15}
+h1{font-size:34px;font-weight:800;letter-spacing:-.03em}
+h2{font-size:22px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+.lede{color:var(--ink-500);max-width:66ch}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.rise{animation:rise .35s cubic-bezier(.2,.7,.3,1) both}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live{animation:pulse 1.1s infinite}
+
+/* поверхности */
+.box{border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.box.soft{background:var(--surface)}
+.box-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.box-h .t{font-weight:700;font-size:15px}
+.box-h .s{font-size:13px;color:var(--ink-500);margin-top:3px}
+.rec{border-left:3px solid var(--o500);background:var(--o50);padding:16px 20px;border-radius:0 10px 10px 0}
+.rec .eyebrow{color:var(--o700)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 9px;border-radius:6px;border:1px solid var(--line);color:var(--ink-500);background:var(--bg)}
+.chip.ok{color:var(--ok);border-color:#B9E6D3;background:var(--ok-50)}
+.chip.warn{color:var(--warn);border-color:#F3D9A6;background:var(--warn-50)}
+.chip.bad{color:var(--danger);border-color:#F5C2C2;background:var(--danger-50)}
+.chip.brand{color:var(--o700);border-color:#EBD9BE;background:var(--o50)}
+.dot{width:7px;height:7px;border-radius:99px;display:inline-block}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;padding:10px 16px;border-radius:9px;border:1px solid var(--line);background:var(--bg);transition:.15s;white-space:nowrap}
+.btn:hover{background:var(--surface)}
+.btn.pri{background:var(--btn);color:#fff;border-color:transparent}
+.btn.pri:hover{filter:brightness(1.06)}
+.btn.sm{font-size:13px;padding:7px 12px;border-radius:8px}
+.btn.ghost{border-color:transparent;color:var(--ink-500)}
+.btn.ghost:hover{color:var(--ink);background:var(--surface)}
+.btn:disabled{opacity:.45;pointer-events:none}
+input,select{height:40px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);font-size:14px;transition:.15s;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--o500);box-shadow:0 0 0 3px var(--o100)}
+input::placeholder{color:var(--ink-300)}
+.track{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.fill{height:100%;border-radius:3px;background:var(--o500);transition:width .5s}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);font-weight:700;white-space:nowrap}
+td{padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:90;display:flex;gap:10px;align-items:center;padding:12px 18px;border-radius:10px;background:var(--ink);color:var(--bg);font-size:14px;box-shadow:var(--shadow);animation:rise .3s both}
+html.dark .toast{background:#F4F6F9;color:#0B0D10}
+
+/* вход */
+.auth{min-height:100vh;display:grid;grid-template-columns:1.05fr .95fr}
+.auth .left{padding:56px 60px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--line);background:var(--surface)}
+.auth .right{display:flex;align-items:center;justify-content:center;padding:32px}
+.mark{display:flex;align-items:center;gap:11px}
+.mark b{font-weight:700;letter-spacing:.16em;font-size:14px}
+.hero h1{font-size:clamp(34px,4vw,50px);max-width:12ch}
+.hero p{margin-top:20px;font-size:16px;color:var(--ink-500);max-width:52ch;line-height:1.6}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:34px;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--line);max-width:600px}
+.kpis div{background:var(--bg);padding:16px 18px}
+.kpis b{font-size:28px;font-weight:800;letter-spacing:-.03em;display:block}
+.kpis span{font-size:12.5px;color:var(--ink-500);display:block;margin-top:4px}
+
+/* мастер */
+.wiz{max-width:900px;margin:0 auto;padding:28px 20px 70px}
+.steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.step{flex:1;min-width:150px;display:flex;gap:10px;align-items:center;padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink-500);font-size:12.5px}
+.step.on{border-color:var(--o500);color:var(--ink);background:var(--o50)}
+.step.ok{color:var(--ink-500)}
+.step .n{width:22px;height:22px;border-radius:99px;display:grid;place-items:center;font-size:11px;font-weight:700;border:1px solid var(--line);flex:none;background:var(--bg)}
+.step.on .n{background:var(--o600);color:#fff;border-color:transparent}
+.step.ok .n{background:var(--ok);color:#fff;border-color:transparent}
+.card{border:1px solid var(--line);border-radius:var(--r-lg);padding:28px;background:var(--bg)}
+.drop{border:1.5px dashed var(--ink-200);border-radius:var(--r);background:var(--surface);padding:30px;text-align:center;cursor:pointer;transition:.15s}
+.drop:hover,.drop.over{border-color:var(--o500);background:var(--o50)}
+.field{display:grid;gap:7px}
+.row3{display:grid;grid-template-columns:190px 1fr auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.row3 input{height:34px;font-size:13.5px}
+.check{display:flex;gap:12px;align-items:flex-start;padding:13px 15px;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:pointer;transition:.15s}
+.check:hover{border-color:var(--ink-200)}
+.check.done{opacity:.55}
+.tick{width:20px;height:20px;border-radius:99px;border:1.5px solid var(--ink-200);flex:none;display:grid;place-items:center;font-size:11px;color:transparent}
+.check.done .tick{background:var(--ok);border-color:transparent;color:#fff}
+.busy{display:flex;gap:12px;align-items:center;padding:14px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);margin-bottom:14px;font-size:14px}
+
+/* приложение */
+.shell{display:flex;min-height:100vh}
+.rail{width:236px;flex:none;height:100vh;position:sticky;top:0;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--line)}
+.rail-top{height:60px;display:flex;align-items:center;padding:0 18px;border-bottom:1px solid var(--line)}
+.nav{flex:1;padding:12px 10px;overflow-y:auto}
+.nav a{display:flex;align-items:center;gap:10px;height:36px;padding:0 11px;border-radius:8px;font-size:14px;color:var(--ink-500);cursor:pointer}
+.nav a:hover{background:var(--bg);color:var(--ink)}
+.nav a.on{background:var(--bg);color:var(--accent);font-weight:600;box-shadow:0 1px 2px rgba(11,13,16,.06)}
+.nav a .ic{width:16px;text-align:center;font-size:13px;opacity:.8}
+.rail-foot{padding:12px;border-top:1px solid var(--line)}
+.who{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--bg);border:1px solid var(--line)}
+.main{flex:1;min-width:0}
+.topbar{padding:22px 30px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;background:var(--bg)}
+.topbar .sub{font-size:14px;color:var(--ink-500);margin-top:6px}
+.page{padding:24px 30px 60px}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g2{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+.stat{padding:18px 20px}
+.stat .v{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:8px}
+.stat .d{margin-top:8px;font-size:12.5px;color:var(--ink-500);display:flex;gap:6px;flex-wrap:wrap}
+.empty{max-width:640px;margin:26px auto;padding:38px;text-align:center}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:860px){.auth{grid-template-columns:1fr}.auth .left{display:none}.rail{display:none}.g2{grid-template-columns:1fr}.row3{grid-template-columns:1fr;gap:6px}.page{padding:16px}.topbar{padding:16px}}
+@media(max-width:600px){.g4{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+window.addEventListener('error',function(e){
+  var a=document.getElementById('app');
+  if(a&&!a.innerHTML.trim())a.innerHTML='<div style="max-width:620px;margin:12vh auto;padding:28px;border:1px solid #E4E9EF;border-radius:14px;font-family:Inter,sans-serif"><b>Страница не запустилась.</b><p style="margin-top:8px;color:#5A6675">Обновите страницу. Если повторится — покажите текст ниже разработчику.</p><pre style="margin-top:12px;font-size:12px;white-space:pre-wrap;color:#5A6675">'+(e.message||e)+'</pre></div>';
+});
+window.addEventListener('DOMContentLoaded',function(){if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='pdf.worker.min.js';}});
+</script>
+<script>
+/* ═══ DATUM · первый вход. Файлы читаются в браузере и никуда не отправляются. ═══ */
+const TODAY=new Date(2026,8,13);
+const dt=o=>new Date(TODAY.getTime()+o*864e5).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'});
+const m=n=>{const a=Math.abs(n||0);if(a>=1e6)return (n/1e6).toLocaleString('ru-RU',{maximumFractionDigits:1})+' млн ₽';if(a>=1e3)return Math.round(n/1e3).toLocaleString('ru-RU')+' тыс ₽';return Math.round(n||0).toLocaleString('ru-RU')+' ₽'};
+const rub=n=>(n||0).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
+const plural=(n,a,b,c)=>{const m10=n%10,m100=n%100;return m10===1&&m100!==11?a:m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c};
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const el=()=>document.getElementById('app');
+const MARK=(sz=22,ink='currentColor',dot='#B9762B')=>`<svg viewBox="0 0 32 32" width="${sz}" height="${sz}" aria-label="DATUM"><path d="M6.4 8.8 L26 13.4 L14 26.8 Z" fill="none" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/><g fill="${ink}"><circle cx="6.4" cy="8.8" r="2.3"/><circle cx="26" cy="13.4" r="2.3"/><circle cx="14" cy="26.8" r="2.3"/></g><circle cx="15.6" cy="16.2" r="3.4" fill="${dot}"/></svg>`;
+
+const VERSION='0.1 · пилот';
+let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false};
+
+/* ═══ Сохранение: база страницы (общая для всех, кто открыл ссылку) + запас в браузере ═══ */
+let DB=null, CHANGELOG=null;
+const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page'];
+function snapshot(){const o={};SAVE_KEYS.forEach(k=>o[k]=S[k]);o.updatedAt=new Date().toISOString();o.version=VERSION;return o}
+async function persist(){if(!S.key)return;const data=snapshot();
+  try{localStorage.setItem('datum:'+S.key,JSON.stringify(data));localStorage.setItem('datum:last',S.key)}catch(e){}
+  if(DB){try{await DB.doc('companies/'+S.key).set(data);S.synced=new Date();paintSync()}catch(e){S.synced='err';paintSync()}}}
+function paintSync(){const n=document.getElementById('sync');if(!n)return;
+  n.textContent=S.synced==='err'?'не сохранилось в облако — есть копия на устройстве':S.synced?'сохранено '+S.synced.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}):(DB?'облако подключено':'сохраняется на этом устройстве');
+  n.style.color=S.synced==='err'?'var(--danger)':'var(--ink-300)'}
+/* ═══ Перенос данных файлом — для работы без облака и для отправки разработчику ═══ */
+function exportData(){if(!S.key){toast('Сначала войдите в компанию');return}
+  const data=snapshot();data.key=S.key;
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`datum-${S.key}-${new Date().toISOString().slice(0,10)}.json`;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast('Файл с данными компании сохранён — его можно открыть на другом устройстве или отправить разработчику')}
+function importData(){pickFiles(async files=>{const f=files[0];if(!f)return;
+  try{const data=JSON.parse(await f.text());if(!data||!data.company)throw new Error('В файле нет данных компании');
+    S.key=data.key||S.key||(data.company.inn||'').replace(/\D/g,'');SAVE_KEYS.forEach(k=>{if(data[k]!==undefined)S[k]=data[k]});
+    if(S.screen==='welcome')S.screen='app';render();persist();toast('Данные загружены из файла')}
+  catch(e){toast('Не удалось прочитать файл: '+(e.message||e))}},{accept:'.json'})}
+async function loadCompany(key){key=String(key||'').replace(/\D/g,'');if(key.length<10){toast('Введите ИНН — 10 или 12 цифр');return}
+  busy('Ищем данные компании…');let data=null;
+  if(DB){try{const d=await DB.doc('companies/'+key).get();data=d&&(d.data?d.data():d)||null;if(data&&data.exists===false)data=null}catch(e){data=null}}
+  if(!data){try{data=JSON.parse(localStorage.getItem('datum:'+key)||'null')}catch(e){}}
+  S.key=key;
+  if(data&&data.company){SAVE_KEYS.forEach(k=>{if(data[k]!==undefined)S[k]=data[k]});S.busy=null;S.screen=S.screen==='welcome'?'app':S.screen;render();toast('Данные компании загружены — продолжайте с того места, где остановились')}
+  else{S.busy=null;S.screen='wizard';S.step=0;render();setTimeout(()=>{const i=document.getElementById('inn');if(i)i.value=key},0)}
+  try{localStorage.setItem('datum:last',key)}catch(e){}}
+(async()=>{try{if(window.claude&&claude.use){DB=await claude.use('db');if(DB){try{const c=await DB.doc('meta/changelog').get();const v=c&&(c.data?c.data():c);if(v&&v.items)CHANGELOG=v.items}catch(e){}}}}catch(e){DB=null}
+  paintSync();
+  try{const last=localStorage.getItem('datum:last');if(last&&S.screen==='welcome'){const i=document.getElementById('inn_gate');if(i)i.value=last}}catch(e){}})();
+
+function render(){
+  el().innerHTML=(S.screen==='welcome'?welcomeView():S.screen==='wizard'?wizardView():appView())+feedbackUI();
+  paintSync();
+}
+function toast(t){const p=document.querySelector('.toast');if(p)p.remove();const d=document.createElement('div');d.className='toast';d.innerHTML='<span style="color:#DBA765">●</span>'+t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+function theme(){document.documentElement.classList.toggle('dark')}
+function go(p){S.page=p;render();window.scrollTo(0,0)}
+function busy(label){S.busy=label;S.err=null;render()}
+function fail(msg){S.busy=null;S.err=msg;render()}
+function done(){S.busy=null;S.err=null;render()}
+
+/* ═══ Чтение файлов ═══ */
+const ext=n=>(n.split('.').pop()||'').toLowerCase();
+function docxXmlToText(xml){let t=xml.replace(/<w:tab\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<\/w:tc>/g,'\t').replace(/<[^>]+>/g,'');
+  return t.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#(\d+);/g,(x,n)=>String.fromCharCode(n)).replace(/ /g,' ')}
+async function readDocx(file){if(!window.JSZip)throw new Error('Модуль чтения Word ещё загружается — подождите пару секунд и повторите');const zip=await JSZip.loadAsync(file);const f=zip.file('word/document.xml');if(!f)throw new Error('Это не документ Word');return docxXmlToText(await f.async('string'))}
+async function readDocxTables(file){if(!window.JSZip)throw new Error('Модуль чтения Word ещё загружается — подождите пару секунд и повторите');const zip=await JSZip.loadAsync(file);const xml=await zip.file('word/document.xml').async('string');const rows=[];
+  for(const tr of xml.match(/<w:tr[ >][\s\S]*?<\/w:tr>/g)||[]){const cells=(tr.match(/<w:tc[ >][\s\S]*?<\/w:tc>/g)||[]).map(c=>docxXmlToText(c).replace(/\s+/g,' ').trim());if(cells.some(Boolean))rows.push(cells)}
+  return rows}
+async function readPdf(file){if(!window.pdfjsLib)throw new Error('Модуль чтения PDF ещё загружается — подождите пару секунд и повторите');
+  const buf=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:buf}).promise;let out='';
+  for(let i=1;i<=Math.min(pdf.numPages,40);i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();out+=c.items.map(x=>x.str).join(' ')+'\n'}
+  return {text:out,pages:pdf.numPages}}
+async function readXlsx(file){if(!window.XLSX)throw new Error('Модуль чтения Excel ещё загружается — подождите пару секунд и повторите');const buf=await file.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).map(r=>r.map(c=>String(c).trim()))}
+async function readText(file){const e=ext(file.name);
+  if(e==='docx')return {text:await readDocx(file),pages:null};
+  if(e==='pdf')return await readPdf(file);
+  if(e==='txt')return {text:await file.text(),pages:null};
+  throw new Error('Формат .'+e+' не читается — нужен PDF, Word (.docx) или текст')}
+
+/* ═══ Разбор контракта ═══ */
+const num=s=>parseFloat(String(s).replace(/[\s ]/g,'').replace(',','.'));
+function parseContract(raw){
+  const t=raw.replace(/ /g,' ').replace(/[ \t]+/g,' ');
+  const pick=(re,i=1)=>{const x=t.match(re);return x?x[i].replace(/\s+/g,' ').trim():null};
+  const f={};
+  f.number=pick(/(?:контракт|договор)[а-яё]*\s*№\s*([A-Za-zА-Яа-я0-9\-\/_.]+)/i);
+  f.customer=pick(/((?:Государственн|Муниципальн|Федеральн|Санкт|СПб|ГБ|МБ|ФГ|Администрац)[^\n]{5,260}?)\s*,?\s*(?:именуем[а-яё]+ в дальнейшем|далее)\s*[«"]?Заказчик/i)||pick(/Заказчик\s*[:\-—]\s*([^\n]{5,200})/i);
+  f.contractor=pick(/((?:ООО|АО|ПАО|ИП)\s*[«"][^»"]+[»"][^\n]{0,160}?)\s*,?\s*(?:именуем[а-яё]+ в дальнейшем|далее)\s*[«"]?Подрядчик/i)||pick(/Подрядчик\s*[:\-—]\s*([^\n]{5,160})/i);
+  f.inn=pick(/ИНН\s*[:№]?\s*(\d{10}|\d{12})/i);
+  const price=pick(/(?:цена|стоимость)\s+(?:контракта|договора)\s+(?:составляет|равна)?\s*([\d][\d\s]*[.,]\d{2})/i)||pick(/составляет\s*([\d][\d\s]*[.,]\d{2})\s*(?:руб|₽)/i);
+  f.price=price?num(price):null;
+  f.address=pick(/по адресу\s*:?\s*([^\n;]{8,200}?)(?:[,;.]\s*(?:контракт|далее|именуем|в лице|лит)|\n|$)/i);
+  const per=t.match(/с\s*(\d{2}\.\d{2}\.\d{4})\s*(?:г\.?\s*)?по\s*(\d{2}\.\d{2}\.\d{4})/i);
+  f.start=per?per[1]:null;f.end=per?per[2]:null;
+  if(!f.end){const x=t.match(/(?:срок|окончани)[^\n]{0,80}?(\d{2}\.\d{2}\.\d{4})/i);if(x)f.end=x[1]}
+  const dur=pick(/(\d+)\s*\([^)]*\)\s*(?:календарн|рабоч)[а-яё]+\s*дн/i)||pick(/(\d+)\s*(?:календарн|рабоч)[а-яё]+\s*дн/i);
+  f.duration=dur?+dur:null;
+  f.advance=/аванс/i.test(t)?(/аванс[а-яё]*\s+не\s+(?:предусм|выплач)/i.test(t)?'не предусмотрен':'предусмотрен'):null;
+  const pay=pick(/в течение\s*(\d+)\s*(?:\([^)]*\)\s*)?(?:рабочих|календарных)?\s*дн[а-яё]*[^\n]{0,60}?(?:подписан|приём|прием)/i);
+  f.payTerm=pay?+pay:null;
+  f.penalty=/1\/300/.test(t)?'1/300 ключевой ставки ЦБ РФ за день просрочки':(/(?:пен[яи]|неустойк)/i.test(t)?'предусмотрена (раздел об ответственности)':null);
+  f.control=pick(/строительн[а-яё]+ контрол[а-яё]*[^\n]{0,60}?((?:СПб|ГБУ|ГКУ|ООО|АО)[^\n.;]{5,120})/i);
+  f.law=/44-ФЗ|44 ФЗ/.test(t)?'44-ФЗ':(/223-ФЗ/.test(t)?'223-ФЗ':null);
+  f.subject=pick(/(?:предмет[а-яё]*\s+(?:контракта|договора)|выполнение работ по)\s*[:\-—]?\s*([^\n.;]{8,140})/i);
+  f.chars=t.length;
+  return f;
+}
+
+/* ═══ Разбор сметы ═══ */
+function parseEstimate(rows){
+  const isNum=v=>{const s=String(v).replace(/[\s ]/g,'');return s!==''&&/^-?\d+([.,]\d+)?$/.test(s)};
+  let hdr=-1,col={};
+  for(let i=0;i<Math.min(rows.length,80);i++){const h=rows[i].map(c=>c.toLowerCase());
+    const iN=h.findIndex(c=>/наимен/.test(c)),iU=h.findIndex(c=>/^ед|единиц/.test(c)),iQ=h.findIndex(c=>/кол/.test(c)),iS=h.findIndex(c=>/сумм|стоим|всего|итого/.test(c));
+    if(iN>=0&&(iQ>=0||iS>=0)){hdr=i;col={n:iN,u:iU,q:iQ,s:iS};break}}
+  const items=[];
+  for(let i=hdr>=0?hdr+1:0;i<rows.length;i++){const r=rows[i];if(!r||r.length<2)continue;
+    let name,unit,qty,sum;
+    if(hdr>=0){name=r[col.n];unit=col.u>=0?r[col.u]:'';qty=col.q>=0?r[col.q]:'';const nums=r.filter(isNum);sum=(col.s>=0&&isNum(r[col.s]))?r[col.s]:(nums.length?nums[nums.length-1]:'')}
+    else{const texts=r.filter(c=>c&&!isNum(c)),nums=r.filter(isNum);name=[...texts].sort((a,b)=>b.length-a.length)[0];unit=texts.find(c=>/^(м|м2|м²|м3|шт|кг|т|л|компл|100 )/i.test(c))||'';qty=nums.length>1?nums[0]:'';sum=nums.length?nums[nums.length-1]:''}
+    if(!name||name.length<4||!isNum(sum))continue;
+    if(/^(итого|всего|в том числе|фот|нр |сп |накладн|сметн|ндс)/i.test(name.trim()))continue;
+    const s=num(sum);if(!(s>0))continue;
+    items.push({name:name.replace(/\s+/g,' ').trim().slice(0,140),unit:unit||'—',qty:isNum(qty)?num(qty):null,sum:s})}
+  return {items:items.slice(0,400),total:items.reduce((a,b)=>a+b.sum,0),header:hdr>=0};
+}
+
+/* ═══ Тип документа по имени ═══ */
+const RULES=[[/аоср|скрыт/i,'Исполнительная · АОСР'],[/исполнительн|схем/i,'Исполнительная'],[/кс-?2|кс2/i,'Приёмка · КС-2'],[/кс-?3|кс3/i,'Приёмка · КС-3'],
+  [/доп[.\s]*соглаш|дс\s*№/i,'Доп. соглашение'],[/контракт|договор/i,'Контракт'],[/смет|лср|вор|ведомост/i,'Смета и объёмы'],[/календарн|график/i,'План работ'],
+  [/акт/i,'Акт'],[/журнал/i,'Журнал'],[/приказ/i,'Приказ'],[/сертиф|паспорт|деклар/i,'Сертификаты и паспорта'],[/письм|уведомл|согласован/i,'Переписка'],[/охран|инструктаж|пожарн/i,'Охрана труда']];
+function classify(name){const e=ext(name);if(['jpg','jpeg','png','heic','webp'].includes(e))return ['Фотофиксация',true];for(const [re,k] of RULES)if(re.test(name))return [k,true];return ['Прочее',false]}
+
+/* ═══ Обработчики загрузки ═══ */
+function bindDrop(id,handler){setTimeout(()=>{const z=document.getElementById(id);if(!z)return;
+  z.ondragover=e=>{e.preventDefault();z.classList.add('over')};z.ondragleave=()=>z.classList.remove('over');
+  z.ondrop=e=>{e.preventDefault();z.classList.remove('over');handler([...e.dataTransfer.files])}},0)}
+function pickFiles(handler,opts={}){const i=document.createElement('input');i.type='file';if(opts.accept)i.accept=opts.accept;if(opts.multiple)i.multiple=true;if(opts.dir)i.webkitdirectory=true;
+  i.onchange=()=>handler([...i.files]);i.click()}
+
+/** Папка объекта целиком: находим контракт, смету и остальные документы за один раз. */
+async function onObjectFiles(files){
+  files=[...files].filter(f=>f&&f.name&&!f.name.startsWith('.'));
+  if(!files.length)return;
+  busy(`Разбираем ${files.length} ${plural(files.length,'файл','файла','файлов')}: ищем контракт, смету и документы…`);
+  try{
+    const textual=files.filter(f=>['pdf','docx','txt'].includes(ext(f.name)));
+    // кандидаты на контракт: сначала по названию, потом остальные текстовые
+    const byName=textual.filter(f=>/контракт|договор/i.test(f.name)&&!/доп|соглаш|проект/i.test(f.name));
+    const cands=[...byName,...textual.filter(f=>!byName.includes(f))].slice(0,6);
+    let best=null;
+    for(const f of cands){
+      try{const {text,pages}=await readText(f);
+        if(!text||text.replace(/\s/g,'').length<200)continue;
+        const p=parseContract(text);
+        const score=['number','customer','price','end','payTerm','subject'].filter(k=>p[k]).length;
+        if(!best||score>best.score)best={f,p,pages,score};
+        if(score>=5)break;
+      }catch(e){/* нечитаемый файл пропускаем */}
+    }
+    // смета: xlsx/docx с подходящим названием, иначе любой xlsx
+    const smetaCands=[...files.filter(f=>/смет|лср|вор|ведомост/i.test(f.name)&&['xlsx','xls','xlsm','csv','docx'].includes(ext(f.name))),
+                      ...files.filter(f=>['xlsx','xls','xlsm','csv'].includes(ext(f.name)))];
+    let est=null;
+    for(const f of [...new Set(smetaCands)].slice(0,4)){
+      try{const rows=['docx'].includes(ext(f.name))?await readDocxTables(f):await readXlsx(f);
+        const r=parseEstimate(rows);
+        if(r.items.length>=3){est={file:f.name,items:r.items,total:r.total,header:r.header};break}
+      }catch(e){}
+    }
+    // все файлы — в документы объекта
+    S.docs=files.slice(0,300).map(f=>{const [kind,sure]=classify(f.name);return {name:f.name,size:f.size,kind,sure,obj:'',date:f.lastModified?new Date(f.lastModified).toLocaleDateString('ru-RU'):'—'}});
+    if(est)S.estimates=[est];
+    if(best){const p=best.p;
+      S.objects=[{file:best.f.name,pages:best.pages,fields:p,code:'',bundle:files.length,
+        number:p.number||'',customer:p.customer||'',contractor:p.contractor||'',subject:p.subject||'',address:p.address||'',
+        price:p.price,start:p.start||'',end:p.end||'',advance:p.advance||'',payTerm:p.payTerm,penalty:p.penalty||'',control:p.control||'',law:p.law||''}];
+      done();toast(`Контракт найден в «${esc(best.f.name)}»${est?', смета прочитана':''}, документов: ${S.docs.length}`);
+    }else{
+      // контракт не нашли — объект всё равно создаём, поля заполнит человек
+      S.objects=[{file:files.length===1?files[0].name:`${files.length} файлов, контракт не найден`,pages:null,fields:null,code:'',bundle:files.length,
+        number:'',customer:'',contractor:S.company?S.company.name:'',subject:'',address:'',price:null,start:'',end:'',advance:'',payTerm:null,penalty:'',control:'',law:''}];
+      done();toast(textual.length?'В файлах не нашёл текста контракта — заполните поля вручную, документы приложены':'Текстовых файлов нет — приложил как документы, поля заполните вручную');
+    }
+  }catch(e){fail(e.message||String(e))}
+}
+function onContractFiles(f){return onObjectFiles(f)}
+/** Дозагрузка к уже созданному объекту: новые файлы уходят в документы, смета подхватывается, поля контракта не трогаем. */
+async function onObjectFilesMore(files){
+  files=[...files].filter(f=>f&&f.name&&!f.name.startsWith('.'));if(!files.length)return;
+  busy(`Добавляем ${files.length} ${plural(files.length,'файл','файла','файлов')}…`);
+  try{
+    const code=S.objects[0]?S.objects[0].code:'';
+    const have=new Set(S.docs.map(d=>d.name));
+    files.forEach(f=>{if(have.has(f.name))return;const [kind,sure]=classify(f.name);
+      S.docs.push({name:f.name,size:f.size,kind,sure,obj:code,date:f.lastModified?new Date(f.lastModified).toLocaleDateString('ru-RU'):'—'})});
+    if(!S.estimates.length){
+      for(const f of files.filter(f=>['xlsx','xls','xlsm','csv','docx'].includes(ext(f.name)))){
+        try{const rows=ext(f.name)==='docx'?await readDocxTables(f):await readXlsx(f);const r=parseEstimate(rows);
+          if(r.items.length>=3){S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header}];break}}catch(e){}
+      }
+    }
+    if(S.objects[0])S.objects[0].bundle=S.docs.length;
+    done();toast(`Добавлено. Документов по объекту: ${S.docs.length}`);
+  }catch(e){fail(e.message||String(e))}
+}
+function contractSample(){const o={file:'пример · контракт 02-03/26ЭА',pages:24,fields:null,code:'НС115',number:'02-03/26ЭА',
+  customer:'ГБОУ средняя общеобразовательная школа № 429 Петродворцового района Санкт-Петербурга им. Героя РФ М.Ю. Малофеева',
+  contractor:'ООО «СК ГОРИЗОНТ-А»',subject:'Выполнение работ по текущему ремонту помещений',
+  address:'198412, Санкт-Петербург, г. Ломоносов, ул. Дегтярева, д. 1/7, лит. А',price:1113008.58,start:'03.07.2026',end:'13.08.2026',
+  advance:'не предусмотрен',payTerm:7,penalty:'1/300 ключевой ставки ЦБ РФ за день просрочки',control:'СПб ГБУ «Петродворцовая служба заказчика»',law:'44-ФЗ'};
+  S.objects=[o];render()}
+
+async function onEstimateFiles(files){const f=files[0];if(!f)return;
+  busy(`Читаем смету «${esc(f.name)}»: разделы, позиции, итоги…`);
+  try{const e=ext(f.name);let rows;
+    if(['xlsx','xls','xlsm','csv'].includes(e))rows=await readXlsx(f);
+    else if(e==='docx')rows=await readDocxTables(f);
+    else throw new Error('Смету читаем из Excel (.xlsx) или Word (.docx). Формат .'+e+' не поддержан.');
+    const r=parseEstimate(rows);
+    if(!r.items.length)throw new Error('Не нашёл позиций: в таблице нет колонки с наименованием и суммой. Проверьте, что это смета, а не пояснительная записка.');
+    S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header}];
+    done();toast(`Прочитано ${r.items.length} ${plural(r.items.length,'позиция','позиции','позиций')}`)}
+  catch(e){fail(e.message||String(e))}}
+function estimateSample(){S.estimates=[{file:'пример · смета ЛС-1',header:true,items:[
+  ['Разборка плинтусов деревянных и из ПВХ','100 м',0.91,3084.64],['Разборка покрытий полов из линолеума','100 м²',1.768,18343.29],
+  ['Устройство покрытия на клее со свариванием швов','100 м²',1.768,350866.34],['Устройство плинтусов ПВХ','100 м',0.91,9339.13],
+  ['Окрашивание потолков водоэмульсионными составами','100 м²',1.768,89705.40],['Очистка стен и откосов от краски','100 м²',3.552,56369.95],
+  ['Сплошное выравнивание поверхностей','100 м²',3.36,141085.13],['Окраска стен акриловыми составами','100 м²',3.552,155583.51],
+  ['Светильники светодиодные накладные','100 шт',0.32,8995.58],['Установка радиаторов стальных панельных','100 шт',0.08,7413.69]]
+  .map(([name,unit,qty,sum])=>({name,unit,qty,sum})),total:840786.66}];render()}
+
+function onDocFiles(files){if(!files.length)return;
+  busy(`Определяем типы ${files.length} ${plural(files.length,'файла','файлов','файлов')} и привязываем к объекту…`);
+  setTimeout(()=>{const code=S.objects[0]?S.objects[0].code||'объект':'—';
+    S.docs=files.slice(0,300).map(f=>{const [kind,sure]=classify(f.name);return {name:f.name,size:f.size,kind,sure,obj:code,date:f.lastModified?new Date(f.lastModified).toLocaleDateString('ru-RU'):'—'}});
+    done();const unsure=S.docs.filter(d=>!d.sure).length;
+    toast(unsure?`Распознано ${S.docs.length-unsure} из ${S.docs.length}, ${unsure} — уточните тип`:`Все ${S.docs.length} файлов распознаны`)},700)}
+function docsSample(){const code=S.objects[0]?S.objects[0].code||'НС115':'НС115';
+  S.docs=['Контракт 02-03-26ЭА.pdf','Смета ЛС-1.xlsx','Календарный план.docx','Акт передачи объекта.docx','Уведомление о начале работ.docx','Приказ о назначении ответственных.docx','Журнал вводного инструктажа.docx','АОСР 1 скрытые работы.docx','Сертификат линолеум.pdf','Фото коридор 12.08.jpg']
+  .map(n=>{const [kind,sure]=classify(n);return {name:n,size:0,kind,sure,obj:code,date:dt(-int(1,40))}});render()}
+const int=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
+
+/* ═══ Приветствие ═══ */
+function welcomeView(){return `<div class="auth">
+  <div class="left">
+    <div class="mark">${MARK(26,'var(--ink)')}<b>DATUM</b></div>
+    <div class="hero rise">
+      <div class="eyebrow" style="margin-bottom:16px;color:var(--o700)">Первый вход · пустая система</div>
+      <h1>Ваша компания в системе за двадцать минут</h1>
+      <p>Ничего заполнять вручную не нужно. Вы приносите то, что и так есть: контракт, смету в Excel и папку документов. Система читает их сама, а вы проверяете и подтверждаете.</p>
+      <div class="kpis"><div><b>5</b><span>шагов до рабочей системы</span></div><div><b>3</b><span>файла, с которых всё начинается</span></div><div><b>14</b><span>дней бесплатно, без карты</span></div></div>
+    </div>
+    <div style="display:flex;gap:24px"><span class="eyebrow">Файлы читаются в браузере</span><span class="eyebrow">Ничего никуда не отправляется</span></div>
+  </div>
+  <div class="right"><div class="rise" style="width:100%;max-width:420px">
+    <div class="eyebrow" style="color:var(--o700)">Пилотная версия</div>
+    <h2 style="margin-top:10px">Вход в компанию</h2>
+    <p class="lede" style="margin-top:8px;font-size:14px">Введите ИНН компании. Если она уже заведена — откроются её данные, если нет — начнём с чистого листа. Всё, что вы внесёте, сохраняется и будет на месте при следующем входе.</p>
+    <div class="field" style="margin-top:20px"><span class="eyebrow">ИНН компании</span><input id="inn_gate" placeholder="10 или 12 цифр" inputmode="numeric" onkeydown="if(event.key==='Enter')loadCompany(this.value)"></div>
+    <button class="btn pri" style="width:100%;margin-top:12px;height:46px;font-size:15px" onclick="loadCompany(document.getElementById('inn_gate').value)">Войти в компанию →</button>
+    <div style="display:flex;justify-content:space-between;margin-top:10px;align-items:center"><span class="eyebrow" style="font-weight:600">версия ${VERSION}</span><button class="btn sm ghost" onclick="importData()">Есть файл с данными? Загрузить</button></div>
+    <span id="sync" class="eyebrow" style="display:block;margin-top:6px;font-weight:600"></span>
+    <div class="box soft" style="padding:16px;margin-top:18px">
+      <div class="eyebrow" style="color:var(--o700)">Что понадобится</div>
+      <div style="font-size:13.5px;color:var(--ink-500);line-height:1.8;margin-top:8px">
+        <b style="color:var(--o500)">01</b> ИНН компании<br><b style="color:var(--o500)">02</b> Контракт — PDF или Word<br><b style="color:var(--o500)">03</b> Смета в Excel и папка с документами<br><b style="color:var(--o500)">04</b> Телефоны прораба и снабженца</div>
+    </div>
+    <p class="eyebrow" style="margin-top:14px;line-height:1.7;font-weight:600">Нет файлов под рукой — на каждом шаге есть «показать на примере»</p>
+  </div></div></div>`}
+
+/* ═══ Мастер ═══ */
+const STEPS=[['Компания','реквизиты и профиль'],['Команда','кто и что видит'],['Объект','контракт из файла'],['Смета','Excel с позициями'],['Документы','папка и Telegram']];
+function wizardView(){const body=[stepCompany,stepTeam,stepObject,stepEstimate,stepDocs][S.step]();
+  return `<div style="position:sticky;top:0;z-index:30;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;gap:12px">
+    <div class="mark">${MARK(22,'var(--ink)')}<b>DATUM</b></div><span class="eyebrow" style="margin-left:8px">запуск компании</span>
+    <span class="eyebrow" style="margin-left:auto">шаг ${S.step+1} из ${STEPS.length}</span><button class="btn sm ghost" onclick="theme()">◑</button></div>
+  <div class="wiz">
+    <div class="steps">${STEPS.map(([t,d],i)=>`<div class="step ${i===S.step?'on':i<S.step?'ok':''}"><span class="n">${i<S.step?'✓':i+1}</span><span><b style="display:block;font-size:13px;font-weight:600">${t}</b><span class="eyebrow" style="display:block;margin-top:2px;font-weight:600">${d}</span></span></div>`).join('')}</div>
+    ${S.busy?`<div class="busy"><span class="live" style="color:var(--o500);font-size:16px">●</span>${S.busy}</div>`:''}
+    ${S.err?`<div class="busy" style="border-color:#F5C2C2;background:var(--danger-50);color:var(--danger)"><span>!</span><span>${esc(S.err)}</span><button class="btn sm ghost" style="margin-left:auto" onclick="S.err=null;render()">✕</button></div>`:''}
+    ${body}
+  </div>`}
+function nav(back,next,label,skipLabel){return `<div style="display:flex;gap:10px;margin-top:24px;align-items:center;flex-wrap:wrap">
+  ${back?`<button class="btn" onclick="S.step--;render()">← Назад</button>`:''}
+  <button class="btn pri" onclick="${next}" style="min-width:200px">${label} →</button>
+  <button class="btn ghost sm" onclick="skipStep()">${skipLabel||'Пропустить пока'}</button></div>`}
+function skipStep(){S.step++;if(S.step>4){S.screen='app';S.step=0}render()}
+
+/* шаг 1 */
+function stepCompany(){const c=S.company;return `<div class="card rise">
+  <div class="eyebrow" style="color:var(--o700)">Шаг 1</div><h2 style="margin-top:8px">Компания</h2>
+  <p class="lede" style="margin-top:10px;font-size:14.5px">Реквизиты компании и четыре поля профиля — по ним система решает, подходит ли вам закупка. В пилотной версии реестр не подключён: реквизиты заполняются один раз вручную.</p>
+  <div style="display:grid;grid-template-columns:1fr auto;gap:10px;margin-top:20px;max-width:480px;align-items:end">
+    <div class="field"><span class="eyebrow">ИНН организации</span><input id="inn" value="${esc(c?c.inn:(S.key||''))}" placeholder="10 или 12 цифр" inputmode="numeric"></div><button class="btn" onclick="lookupInn()">${c?'Обновить':'Продолжить'}</button></div>
+  ${c?`<div style="display:grid;gap:8px;margin-top:18px">
+    <div class="eyebrow">${c.fromRegistry?'Найдено по ИНН — проверьте':'Реквизиты — заполните'}</div>
+    ${[['name','Наименование','ООО «Название»'],['ogrn','ОГРН','13 цифр'],['kpp','КПП','9 цифр'],['addr','Адрес','юридический адрес'],['head','Руководитель','должность и ФИО'],['tax','Налоги','УСН или НДС']].map(([k,l,ph])=>`<div class="row3"><span class="eyebrow">${l}</span><input id="${k}" value="${esc(c[k]||'')}" placeholder="${ph}"><span class="chip ${c.fromRegistry?'ok':''}">${c.fromRegistry?'из реестра':'вручную'}</span></div>`).join('')}
+    ${[['spec','Специализация','влияет на оценку закупок'],['region','Домашний регион','влияет на оценку закупок'],['cap','Потолок контракта','комфортная сумма'],['crew','Бригад в работе','учитывается в загрузке']].map(([k,l,h])=>`<div class="row3"><span class="eyebrow">${l}</span><input id="${k}" value="${esc(c[k]||'')}" placeholder="${k==='spec'?'ремонт, кровля, сети':k==='region'?'город или область':k==='cap'?'например 25 000 000 ₽':'например 8'}"><span class="chip brand">${h}</span></div>`).join('')}
+  </div>`:''}
+  ${nav(false,c?'saveCompany()':'lookupInn()',c?'Сохранить и дальше':'Продолжить')}</div>`}
+function lookupInn(){const inn=((document.getElementById('inn')||{}).value||'').replace(/\D/g,'');
+  if(inn.length<10){toast('ИНН — 10 или 12 цифр');return}
+  if(!S.key)S.key=inn;
+  if(inn==='7817145422'){busy('Подставляем реквизиты…');setTimeout(()=>{S.company={inn,fromRegistry:true,name:'ООО «СК ГОРИЗОНТ-А»',ogrn:'1257800032995',kpp:'781701001',addr:'196624, Санкт-Петербург, пос. Шушары, 2-й Бадаевский проезд, д. 3, корп. 1, лит. А, офис 312',head:'Генеральный директор Аракелян Мисак Айказович',tax:'УСН 15 % — НДС не облагается',spec:'ремонт, отделочные работы, кровля, инженерные сети',region:'Санкт-Петербург',cap:'25 000 000 ₽',crew:'8'};done()},700);return}
+  S.company=Object.assign({inn,fromRegistry:false,name:'',ogrn:'',kpp:'',addr:'',head:'',tax:'',spec:'',region:'',cap:'',crew:''},S.company||{},{inn});render();
+  toast('Реестр в пилоте не подключён — заполните реквизиты, это один раз')}
+function saveCompany(){['name','ogrn','kpp','addr','head','tax','spec','region','cap','crew'].forEach(k=>{const e=document.getElementById(k);if(e)S.company[k]=e.value.trim()});
+  if(!S.company.name){toast('Укажите наименование компании');return}
+  S.step=1;render();toast('Компания сохранена')}
+
+/* шаг 2 */
+const ROLES=[['Руководитель проекта','свои объекты, деньги по ним, сроки'],['Прораб','только свои объекты: задачи, отчёт, фото, заявки'],['Снабженец','заявки и поставщики, без финансов'],['ПТО · документовед','документы и комплекты исполнительной'],['Тендерный менеджер','закупки и оценка, без объектов'],['Бухгалтер','платежи и акты, без тендеров']];
+function stepTeam(){return `<div class="card rise">
+  <div class="eyebrow" style="color:var(--o700)">Шаг 2</div><h2 style="margin-top:8px">Команда и доступы</h2>
+  <p class="lede" style="margin-top:10px;font-size:14.5px">Приглашение уходит в Telegram или на почту. Роль определяет, что человек видит; доступ к объектам выдаётся отдельно — чужая стройка не откроется даже по прямой ссылке.</p>
+  <div style="display:grid;gap:8px;margin-top:18px">${S.team.map((t,i)=>`<div class="row3" style="grid-template-columns:1fr 1fr auto"><div><div style="font-weight:600;font-size:14px">${esc(t.name)}</div><div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(t.contact)}</div></div><span class="chip">${t.role}</span><button class="btn sm ghost" onclick="S.team.splice(${i},1);render()">Убрать</button></div>`).join('')}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
+    <div class="field"><span class="eyebrow">Фамилия и имя</span><input id="tm_name" placeholder="Абдуллаев Абдулжалил"></div>
+    <div class="field"><span class="eyebrow">Телефон или почта</span><input id="tm_contact" placeholder="+7 981 000-00-00"></div>
+    <div class="field"><span class="eyebrow">Роль</span><select id="tm_role">${ROLES.map(([r])=>`<option>${r}</option>`).join('')}</select></div>
+    <button class="btn" onclick="addMember()">Пригласить</button></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:20px">${ROLES.map(([r,d])=>`<div class="box soft" style="padding:13px"><div style="font-weight:600;font-size:13.5px">${r}</div><div style="font-size:12.5px;color:var(--ink-500);margin-top:4px;line-height:1.5">${d}</div></div>`).join('')}</div>
+  ${nav(true,'S.step=2;render()',S.team.length?`Дальше · приглашено ${S.team.length}`:'Дальше без команды')}</div>`}
+function addMember(){const n=document.getElementById('tm_name').value.trim();if(!n){toast('Укажите, кого приглашаем');return}
+  S.team.push({name:n,contact:document.getElementById('tm_contact').value.trim()||'по ссылке в Telegram',role:document.getElementById('tm_role').value});render();toast('Приглашение отправлено')}
+
+/* шаг 3 */
+function stepObject(){const o=S.objects[0];bindDrop('drop_c',onContractFiles);
+  const F=(l,k,src,fmt)=>{const v=o[k];const ok=v!==null&&v!==''&&v!==undefined;
+    return `<div class="row3"><span class="eyebrow">${l}</span>${k==='price'?`<input id="f_${k}" value="${ok?String(v):''}" placeholder="сумма из п. 2.1">`:`<input id="f_${k}" value="${esc(ok?v:'')}" placeholder="${ok?'':'не найдено — заполните'}">`}
+      <span class="chip ${ok?'ok':'warn'}">${ok?'✓ '+src:'не найдено'}</span></div>`};
+  return `<div class="card rise">
+  <div class="eyebrow" style="color:var(--o700)">Шаг 3</div><h2 style="margin-top:8px">Первый объект</h2>
+  <p class="lede" style="margin-top:10px;font-size:14.5px">Перетащите папку объекта целиком или несколько файлов: контракт, смету, приложения, акты. Система сама найдёт среди них контракт и вытащит заказчика, сумму, сроки и порядок оплаты, смету разложит на позиции, остальное приложит как документы.</p>
+  ${!o?`<div id="drop_c" class="drop" style="margin-top:20px" onclick="pickFiles(onObjectFiles,{multiple:true})">
+      <div style="font-size:26px;color:var(--ink-300)">▤</div><div style="font-weight:700;margin-top:10px">Перетащите папку объекта или файлы</div>
+      <div class="eyebrow" style="margin-top:7px;font-weight:600">pdf · docx · xlsx · jpg — можно сразу все документы</div></div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <button class="btn sm" onclick="pickFiles(onObjectFiles,{dir:true})">Выбрать папку целиком</button>
+      <button class="btn sm" onclick="pickFiles(onObjectFiles,{multiple:true})">Выбрать несколько файлов</button>
+      <button class="btn sm ghost" onclick="contractSample()">Показать на примере</button>
+      <button class="btn sm ghost" onclick="manualObject()">Ввести руками</button></div>
+    <p class="eyebrow" style="margin-top:12px;line-height:1.7;font-weight:600">Один файл тоже подойдёт — тогда система прочитает только контракт</p>`:`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:18px">
+      ${o.bundle?`<span class="chip ok">файлов: ${o.bundle}</span>`:''}
+      <span class="chip ${o.fields?'ok':'warn'}">${o.fields?'контракт: '+esc(o.file)+(o.pages?' · '+o.pages+' стр.':''):esc(o.file)}</span>
+      ${S.estimates.length&&S.estimates[0].file?`<span class="chip ok">смета: ${esc(S.estimates[0].file)} · ${S.estimates[0].items.length} поз.</span>`:(o.bundle?'<span class="chip warn">смета не найдена</span>':'')}
+      ${S.docs.length?`<span class="chip">документов: ${S.docs.length}</span>`:''}
+      <button class="btn sm ghost" style="margin-left:auto" onclick="S.objects=[];S.estimates=[];S.docs=[];render()">Загрузить заново</button>
+      <button class="btn sm ghost" onclick="pickFiles(onObjectFilesMore,{multiple:true})">Добавить файлы</button></div>
+    <div style="display:grid;gap:8px;margin-top:14px">
+      <div class="eyebrow">Что нашла система — поправьте, где нужно</div>
+      ${F('Номер контракта','number','из документа')}${F('Заказчик','customer','из преамбулы')}${F('Подрядчик','contractor','из преамбулы')}
+      ${F('Предмет','subject','предмет контракта')}${F('Адрес объекта','address','из документа')}${F('Цена контракта, ₽','price','пункт о цене')}
+      ${F('Начало работ','start','сроки')}${F('Окончание работ','end','сроки')}${F('Аванс','advance','раздел об оплате')}
+      ${F('Отсрочка оплаты, дней','payTerm','раздел об оплате')}${F('Неустойка','penalty','ответственность')}${F('Строительный контроль','control','из документа')}
+      <div class="row3"><span class="eyebrow">Код объекта</span><input id="f_code" value="${esc(o.code||'НС-01')}"><span class="chip brand">ваш внутренний шифр</span></div>
+    </div>
+    <div class="rec" style="margin-top:16px"><div class="eyebrow">Что произойдёт при сохранении</div>
+      <p style="font-size:13.5px;color:var(--ink-700);margin-top:6px;line-height:1.55">Срок разобьётся на этапы и построится график работ, появится перечень обязательных документов, включится контроль сроков и платежей.</p></div>`}
+  ${o?nav(true,'saveObject()','Сохранить объект'):nav(true,'skipStep()','Пока без объекта')}</div>`}
+function manualObject(){S.objects=[{file:'ввод вручную',pages:null,fields:null,code:'',number:'',customer:'',contractor:S.company?S.company.name:'',subject:'',address:'',price:null,start:'',end:'',advance:'',payTerm:null,penalty:'',control:'',law:''}];render()}
+function saveObject(){const o=S.objects[0];['number','customer','contractor','subject','address','start','end','advance','penalty','control','code'].forEach(k=>{const e=document.getElementById('f_'+k);if(e)o[k]=e.value.trim()});
+  const p=document.getElementById('f_price');if(p&&p.value)o.price=num(p.value);const pt=document.getElementById('f_payTerm');if(pt&&pt.value)o.payTerm=+pt.value;
+  if(!o.number&&!o.customer){toast('Нужен хотя бы номер контракта или заказчик');return}
+  o.code=o.code||'НС-01';S.docs.forEach(d=>d.obj=o.code);S.step=3;render();
+  toast(S.estimates.length?'Объект создан, смета из папки уже разобрана — проверьте её на следующем шаге':'Объект создан: график и перечень документов заведены')}
+
+/* шаг 4 */
+function stepEstimate(){const e=S.estimates[0],o=S.objects[0];bindDrop('drop_e',onEstimateFiles);
+  const diff=e&&o&&o.price?e.total-o.price:null;
+  return `<div class="card rise">
+  <div class="eyebrow" style="color:var(--o700)">Шаг 4</div><h2 style="margin-top:8px">Смета</h2>
+  <p class="lede" style="margin-top:10px;font-size:14.5px">Смета — план затрат, с которым система сверяет каждую закупку и наряд. Подойдёт выгрузка из SmetaWIZARD или ГрандСметы в Excel, и обычная таблица тоже.</p>
+  ${!e?`<div id="drop_e" class="drop" style="margin-top:20px" onclick="pickFiles(onEstimateFiles,{accept:'.xlsx,.xls,.xlsm,.csv,.docx'})">
+      <div style="font-size:26px;color:var(--ink-300)">▤</div><div style="font-weight:700;margin-top:10px">Перетащите файл сметы</div>
+      <div class="eyebrow" style="margin-top:7px;font-weight:600">xlsx · xls · docx — или нажмите, чтобы выбрать</div></div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap"><button class="btn sm" onclick="estimateSample()">Показать на примере вашей сметы ЛС-1</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:18px">${[['Что прочитает','наименование, единицу, количество, сумму — по заголовкам таблицы'],['Что отбросит','строки «итого», ФОТ, накладные и ресурсные расшифровки'],['Зачем','из сметы растут заявки снабженцу и ВОР прорабу']].map(([t,d])=>`<div class="box soft" style="padding:13px"><div style="font-weight:600;font-size:13.5px">${t}</div><div style="font-size:12.5px;color:var(--ink-500);margin-top:5px;line-height:1.5">${d}</div></div>`).join('')}</div>`:`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:18px">
+      <span class="chip ok">${S.objects[0]&&S.objects[0].bundle?'найдена в папке объекта':'файл прочитан'}</span><span class="chip">${e.items.length} ${plural(e.items.length,'позиция','позиции','позиций')}</span>
+      <span class="chip ${e.header?'ok':'warn'}">${e.header?'заголовки таблицы найдены':'заголовков нет — колонки угаданы'}</span>
+      <span class="eyebrow" style="margin-left:auto;font-weight:600">${esc(e.file)}</span>
+      <button class="btn sm ghost" onclick="S.estimates=[];render()">Другой файл</button></div>
+    <div class="box" style="margin-top:14px;overflow:hidden"><div style="overflow-x:auto;max-height:380px"><table>
+      <thead><tr><th style="width:30px">№</th><th>наименование</th><th>ед.</th><th style="text-align:right">кол-во</th><th style="text-align:right">сумма</th></tr></thead>
+      <tbody>${e.items.slice(0,60).map((it,i)=>`<tr><td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td><td style="font-size:13.5px">${esc(it.name)}</td><td style="color:var(--ink-500);font-size:12.5px">${esc(it.unit)}</td><td class="num" style="text-align:right">${it.qty??'—'}</td><td class="num" style="text-align:right">${m(it.sum)}</td></tr>`).join('')}
+      ${e.items.length>60?`<tr><td colspan="5" class="eyebrow" style="text-align:center">… ещё ${e.items.length-60} позиций</td></tr>`:''}</tbody></table></div>
+      <div style="padding:12px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline"><span class="eyebrow">итого по позициям</span><b class="num" style="font-size:17px;color:var(--o700)">${rub(e.total)}</b></div></div>
+    <div class="rec" style="margin-top:14px"><div class="eyebrow">Проверка на входе</div>
+      <p style="font-size:13.5px;color:var(--ink-700);margin-top:6px;line-height:1.55">${diff===null?'Цена контракта не задана — сверить не с чем. Это не мешает работе.':Math.abs(diff)<1?`Сумма сметы сходится с ценой контракта ${rub(o.price)}.`:`Сумма позиций ${rub(e.total)} отличается от цены контракта ${rub(o.price)} на ${rub(Math.abs(diff))}. Обычно это накладные, сметная прибыль или коэффициент снижения — система покажет разницу в карточке сметы.`}</p></div>`}
+  ${e?nav(true,'S.step=4;render()','Принять смету'):nav(true,'skipStep()','Пока без сметы')}</div>`}
+
+/* шаг 5 */
+function stepDocs(){bindDrop('drop_d',onDocFiles);const n=S.docs.length;
+  return `<div class="card rise">
+  <div class="eyebrow" style="color:var(--o700)">Шаг 5</div><h2 style="margin-top:8px">Документы и Telegram</h2>
+  <p class="lede" style="margin-top:10px;font-size:14.5px">Выберите папку объекта целиком — система определит тип каждого файла и привяжет к объекту. Дальше она следит за комплектностью и предупреждает, если к приёмке чего-то не хватает.</p>
+  ${!n?`<div id="drop_d" class="drop" style="margin-top:20px" onclick="pickFiles(onDocFiles,{multiple:true})">
+      <div style="font-size:26px;color:var(--ink-300)">▤</div><div style="font-weight:700;margin-top:10px">Перетащите файлы документов</div>
+      <div class="eyebrow" style="margin-top:7px;font-weight:600">pdf · docx · xlsx · jpg — сразу десятки файлов</div></div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap"><button class="btn sm" onclick="pickFiles(onDocFiles,{dir:true})">Выбрать папку целиком</button><button class="btn sm ghost" onclick="docsSample()">Показать на примере</button></div>`:`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:18px">
+      <span class="chip ok">распознано ${S.docs.filter(d=>d.sure).length} из ${n}</span>${S.docs.filter(d=>!d.sure).length?`<span class="chip warn">${S.docs.filter(d=>!d.sure).length} — уточните тип</span>`:''}
+      <button class="btn sm ghost" style="margin-left:auto" onclick="S.docs=[];render()">Загрузить заново</button></div>
+    <div class="box" style="margin-top:14px;overflow:hidden"><div style="overflow-x:auto;max-height:360px"><table>
+      <thead><tr><th>файл</th><th>тип</th><th>объект</th><th>дата файла</th></tr></thead>
+      <tbody>${S.docs.slice(0,80).map((d,i)=>`<tr><td style="font-size:13.5px"><span style="color:var(--o500);margin-right:8px">▤</span>${esc(d.name)}</td>
+        <td><select style="height:32px;font-size:13px;min-width:190px" onchange="S.docs[${i}].kind=this.value;S.docs[${i}].sure=true">${['Контракт','Доп. соглашение','Смета и объёмы','План работ','Акт','Исполнительная','Исполнительная · АОСР','Приёмка · КС-2','Приёмка · КС-3','Журнал','Приказ','Сертификаты и паспорта','Переписка','Охрана труда','Фотофиксация','Прочее'].map(k=>`<option${k===d.kind?' selected':''}>${k}</option>`).join('')}</select></td>
+        <td><span class="chip ok">${esc(d.obj)}</span></td><td class="num" style="font-size:13px;color:var(--ink-500)">${d.date}</td></tr>`).join('')}</tbody></table></div></div>`}
+  <div style="margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">
+    <div class="box" style="padding:16px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px;color:var(--o500)">◎</span><div><div style="font-weight:700;font-size:14px">Telegram для поля</div><div class="eyebrow" style="margin-top:3px;font-weight:600">прораб, снабженец, сигналы</div></div>
+      <button class="btn sm ${S.telegram?'':'pri'}" style="margin-left:auto" onclick="${S.telegram?'S.telegram=false;render()':'connectTelegram()'}">${S.telegram?'подключено':'Подключить'}</button></div>
+      <p style="font-size:13px;color:var(--ink-500);margin-top:10px;line-height:1.55">Прораб отправляет отчёт и фото из чата, снабженец получает заявки, руководитель — утреннюю сводку и сигналы.</p>
+      ${S.telegram?`<div class="box soft" style="padding:11px;margin-top:10px"><div class="eyebrow">бот компании</div><div style="font-weight:600;margin-top:4px;color:var(--o700)">@datum_gorizont_bot</div><div class="eyebrow" style="margin-top:5px;font-weight:600">ссылки для входа отправлены приглашённым</div></div>`:''}</div>
+    <div class="box" style="padding:16px"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px;color:var(--o500)">⌕</span><div><div style="font-weight:700;font-size:14px">Поиск закупок в ЕИС</div><div class="eyebrow" style="margin-top:3px;font-weight:600">под ваш профиль</div></div></div>
+      <p style="font-size:13px;color:var(--ink-500);margin-top:10px;line-height:1.55">Профиль с первого шага уже в работе: закупки отбираются по видам работ, региону и посильной сумме, каждая получает оценку от 0 до 100.</p></div>
+  </div>
+  ${nav(true,'finishWizard()','Открыть систему','Пропустить и осмотреться')}</div>`}
+function connectTelegram(){busy('Создаём бота компании и готовим ссылки для входа…');setTimeout(()=>{S.telegram=true;done()},1000)}
+function finishWizard(){S.screen='app';S.page='dash';render();toast('Система запущена')}
+
+/* ═══ Система после запуска ═══ */
+const NAV=[['dash','Главная','◧'],['objects','Объекты','▣'],['schedule','График работ','⌗'],['docs','Документы','▥'],['estimates','Сметы','∑'],['finance','Деньги','₽'],['tenders','Закупки','◎'],['team','Команда','◍']];
+function progress(){return [['Компания заведена',!!S.company,"S.screen='wizard';S.step=0;render()"],['Команда приглашена',S.team.length>0,"S.screen='wizard';S.step=1;render()"],['Первый объект создан',S.objects.length>0,"S.screen='wizard';S.step=2;render()"],['Смета загружена',S.estimates.length>0,"S.screen='wizard';S.step=3;render()"],['Документы загружены',S.docs.length>0,"S.screen='wizard';S.step=4;render()"],['Telegram подключён',S.telegram,"S.screen='wizard';S.step=4;render()"]]}
+function appView(){const list=progress(),done=list.filter(x=>x[1]).length;
+  return `<div class="shell"><aside class="rail">
+    <div class="rail-top"><div class="mark">${MARK(24,'var(--ink)')}<div><b style="display:block">DATUM</b><span class="eyebrow" style="display:block;font-size:9.5px;margin-top:2px">${S.company?esc(S.company.name.replace('ООО ','')):'компания'}</span></div></div></div>
+    <nav class="nav">${NAV.map(([k,l,ic])=>`<a class="${S.page===k?'on':''}" onclick="go('${k}')"><span class="ic">${ic}</span>${l}</a>`).join('')}</nav>
+    <div class="rail-foot">
+      <a class="nav" onclick="S.changelog=true;render()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">✦</span>Что нового<span class="eyebrow" style="margin-left:auto;font-size:9.5px">${VERSION}</span></a>
+      <a class="nav" onclick="exportData()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">↧</span>Выгрузить данные</a>
+      <a class="nav" onclick="importData()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">↥</span>Загрузить из файла</a>
+      <a class="nav" onclick="theme()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">◑</span>Тема</a>
+      <div id="sync" class="eyebrow" style="padding:6px 11px 4px;font-size:9.5px;font-weight:600"></div>
+      <div class="who" style="margin-top:6px"><div style="width:32px;height:32px;border-radius:9px;background:var(--o600);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'В')}</div>
+        <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,''))}</div><div class="eyebrow" style="margin-top:2px;font-size:10px">пилот · ИНН ${esc(S.key||'')}</div></div>
+        <button onclick="resetAll()" title="Начать заново" style="color:var(--ink-300);font-size:15px">⟲</button></div></div></aside>
+  <main class="main">
+    ${done<list.length?`<div style="padding:12px 30px;border-bottom:1px solid var(--line);background:var(--o50);display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span class="eyebrow" style="color:var(--o700)">запуск ${done} из ${list.length}</span><div class="track" style="flex:1;max-width:260px"><div class="fill" style="width:${done/list.length*100}%"></div></div><button class="btn sm ghost" style="margin-left:auto" onclick="go('dash')">Чек-лист</button></div>`:''}
+    ${({dash:pDash,objects:pObjects,schedule:pSchedule,docs:pDocs,estimates:pEstimates,finance:pFinance,tenders:pTenders,team:pTeam})[S.page]()}
+  </main></div>`}
+function head(eyebrow,title,sub,actions){return `<div class="topbar"><div><div class="eyebrow">${eyebrow}</div><h2 style="margin-top:6px">${title}</h2>${sub?`<div class="sub">${sub}</div>`:''}</div><div style="display:flex;gap:8px;align-items:center">${actions||''}</div></div>`}
+function empty(title,text,label,action,hints){return `<div class="box empty rise"><div style="font-size:24px;color:var(--ink-300)">▤</div><h3 style="margin-top:12px;font-size:18px">${title}</h3><p class="lede" style="margin:10px auto 0;font-size:14px">${text}</p>
+  ${label?`<button class="btn pri" style="margin-top:18px" onclick="${action}">${label}</button>`:''}
+  ${hints?`<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:8px;text-align:left">${hints.map((h,i)=>`<div style="display:flex;gap:10px;font-size:13px;color:var(--ink-500)"><b style="color:var(--o500)">0${i+1}</b><span>${h}</span></div>`).join('')}</div>`:''}</div>`}
+function stat(l,v,h,tone){return `<div class="box stat rise"><div class="eyebrow">${l}</div><div class="v num" ${tone?`style="color:var(--${tone})"`:''}>${v}</div><div class="d">${h||''}</div></div>`}
+
+function pDash(){const o=S.objects[0],e=S.estimates[0],list=progress(),done=list.filter(x=>x[1]).length;
+  return head('Обзор',`Здравствуйте${S.company&&S.company.name?' · '+esc(S.company.name):''}`,o?'Система следит за сроками, деньгами и документами':'Система пока пустая — заведите первый объект')+`<div class="page">
+  ${done<list.length?`<div class="box rise" style="padding:22px;margin-bottom:14px"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div><div class="eyebrow" style="color:var(--o700)">чек-лист запуска</div><div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:4px">Сделано ${done} из ${list.length}</div></div><div class="track" style="flex:1;min-width:180px;max-width:320px;margin-left:auto"><div class="fill" style="width:${done/list.length*100}%"></div></div></div>
+    <div style="display:grid;gap:8px;margin-top:16px">${list.map(([t,ok,run])=>`<div class="check ${ok?'done':''}" onclick="${ok?'':run}"><span class="tick">✓</span><div style="flex:1;font-weight:600;font-size:14px">${t}</div>${ok?'<span class="chip ok">готово</span>':'<span class="eyebrow" style="color:var(--o700)">открыть →</span>'}</div>`).join('')}</div></div>`:''}
+  ${o?`<div class="grid g4">${stat('Объект в работе',esc(o.code),`<span class="chip">${esc(o.subject||o.number)}</span>`)}${stat('Цена контракта',o.price?m(o.price):'—',`<span class="chip">№ ${esc(o.number||'—')}</span>`)}${stat('Срок сдачи',esc(o.end||'—'),`<span class="chip">${o.start?'начало '+esc(o.start):'по контракту'}</span>`)}${stat('Документов',S.docs.length,`<span class="chip ${S.docs.length?'ok':'warn'}">${S.docs.length?'привязаны к объекту':'не загружены'}</span>`)}</div>
+  <div class="grid g2" style="margin-top:14px;align-items:start">
+    <div class="box rise"><div class="box-h"><div><div class="t">Что система знает о вашем объекте</div><div class="s">Всё это она прочитала из контракта и сметы</div></div></div>
+      <div style="padding:16px 20px;display:grid;gap:10px;font-size:14px">${[['Заказчик',o.customer],['Подрядчик',o.contractor],['Адрес',o.address],['Оплата',o.payTerm?'в течение '+o.payTerm+' дней после приёмки':'—'],['Аванс',o.advance],['Неустойка',o.penalty],['Стройконтроль',o.control],['Смета',e?e.items.length+' позиций на '+m(e.total):'не загружена']].map(([l,v])=>`<div style="display:grid;grid-template-columns:130px 1fr;gap:12px"><span class="eyebrow" style="padding-top:3px">${l}</span><span style="color:${v?'var(--ink-700)':'var(--ink-300)'};line-height:1.5">${esc(v||'не найдено в документе')}</span></div>`).join('')}</div></div>
+    <div class="box rise"><div class="box-h"><div><div class="t">Что делать дальше</div><div class="s">Система подсказывает следующий шаг</div></div></div>
+      <div style="padding:16px 20px;display:grid;gap:10px">${[[!S.docs.length,'Загрузить документы объекта','Без комплекта заказчик вправе не принять этап',"go('docs')"],[!S.telegram,'Подключить Telegram прорабу','Отчёт с объекта и фото приходят в систему',"S.screen='wizard';S.step=4;render()"],[!S.team.length,'Пригласить прораба и снабженца','Каждый видит только своё',"S.screen='wizard';S.step=1;render()"],[true,'Настроить поиск закупок','Подходящие тендеры с оценкой',"go('tenders')"]].filter(x=>x[0]).slice(0,3).map(([,t,d,run])=>`<div class="check" onclick="${run}"><span style="color:var(--o500)">→</span><div><div style="font-weight:600;font-size:14px">${t}</div><div style="font-size:13px;color:var(--ink-500);margin-top:3px">${d}</div></div></div>`).join('')}</div></div></div>`:
+  empty('Пока пусто — и это нормально','Система наполняется из ваших документов, а не вручную. Загрузите контракт — появятся объект, график и перечень документов. Загрузите смету — появится план затрат.','Завести первый объект',"S.screen='wizard';S.step=2;render()",['Контракт — файлом PDF или Word, система прочитает его сама','Смета — из SmetaWIZARD, ГрандСметы или обычного Excel','Документы — папкой, типы определятся по названиям'])}</div>`}
+
+function pObjects(){const o=S.objects[0];return head('Производство','Объекты',o?'1 объект · данные из контракта':'Объектов пока нет',`<button class="btn pri sm" onclick="S.screen='wizard';S.step=2;render()">Добавить объект</button>`)+`<div class="page">${o?`<div class="box rise"><div style="overflow-x:auto"><table><thead><tr><th>объект</th><th>заказчик</th><th style="text-align:right">цена</th><th>срок</th></tr></thead><tbody><tr style="cursor:pointer" onclick="go('schedule')"><td><b>${esc(o.code)}</b> · ${esc(o.subject||'—')}<div class="eyebrow" style="margin-top:4px;font-weight:600">${esc(o.address||'адрес не указан')}</div></td><td style="font-size:13px;color:var(--ink-500);max-width:300px">${esc((o.customer||'—').slice(0,70))}</td><td class="num" style="text-align:right">${o.price?m(o.price):'—'}</td><td class="num">${esc(o.end||'—')}</td></tr></tbody></table></div></div>`:empty('Объектов пока нет','Объект появляется из контракта: система прочитает заказчика, сумму, сроки, разобьёт срок на этапы и заведёт перечень документов.','Добавить объект',"S.screen='wizard';S.step=2;render()",['Файлом — PDF или Word контракта','Вручную — если контракт ещё не подписан','Из ЕИС по номеру — после подключения токена'])}</div>`}
+
+function pSchedule(){const o=S.objects[0];if(!o)return head('Производство','График работ','Появится вместе с объектом')+`<div class="page">${empty('График строится из контракта','Как только появится объект, система разложит срок на этапы и построит календарный график по дням.','Завести объект',"S.screen='wizard';S.step=2;render()")}</div>`;
+  const names=['Подготовка объекта','Демонтажные работы','Черновая отделка','Инженерные сети','Чистовая отделка','Сдача и приёмка'];
+  const pd=s=>{const x=String(s).match(/(\d{2})\.(\d{2})\.(\d{4})/);return x?new Date(+x[3],+x[2]-1,+x[1]):null};
+  const a=pd(o.start)||new Date(TODAY.getTime()-20*864e5),b=pd(o.end)||new Date(a.getTime()+42*864e5);const off=d=>Math.round((d-TODAY)/864e5);
+  const s0=off(a),s1=off(b),span=(s1-s0)/names.length,W=760,L=200,min=s0-3,max=s1+3,x=d=>L+((d-min)/(max-min))*(W-L-14);
+  return head('Производство','График работ',`${esc(o.code)} · ${names.length} этапов · ${Math.max(1,s1-s0)} дней по контракту`)+`<div class="page"><div class="box rise"><div class="box-h"><div><div class="t">Календарный график</div><div class="s">Построен из срока контракта ${esc(o.start||'')} — ${esc(o.end||'')}. Выполнение отметит прораб</div></div></div>
+  <div style="padding:20px;overflow-x:auto"><svg width="100%" viewBox="0 0 ${W} ${names.length*36+48}" style="display:block;min-width:600px">${names.map((n,i)=>{const y=22+i*36,f=s0+span*i,t=s0+span*(i+1);return `<text x="0" y="${y+12}" font-size="12" fill="var(--ink-500)" font-weight="600">0${i+1}</text><text x="26" y="${y+12}" font-size="12.5" fill="var(--ink)">${n}</text><text x="0" y="${y+26}" font-size="10" fill="var(--ink-300)">${dt(f)} — ${dt(t)}</text><rect x="${x(f).toFixed(1)}" y="${y}" width="${(x(t)-x(f)).toFixed(1)}" height="16" rx="4" fill="var(--o100)" stroke="var(--o300)"/>`}).join('')}<line x1="${x(0)}" x2="${x(0)}" y1="8" y2="${names.length*36+20}" stroke="var(--o500)" stroke-width="1.5"/><text x="${x(0)+6}" y="${names.length*36+40}" font-size="10" fill="var(--o700)" font-weight="700" letter-spacing="1.5">СЕГОДНЯ</text></svg></div></div></div>`}
+
+function pDocs(){if(!S.docs.length)return head('Контроль','Документы','Хранилище пустое')+`<div class="page">${empty('Документы загружаются папкой','Выберите папку объекта: система определит тип каждого файла и привяжет к объекту. Дальше она следит за комплектностью.','Загрузить документы',"S.screen='wizard';S.step=4;render()",['pdf, docx, xlsx и фотографии','Тип определяется по названию, его можно поправить','Для каждого объекта система знает обязательный комплект'])}</div>`;
+  const kinds={};S.docs.forEach(d=>kinds[d.kind]=(kinds[d.kind]||0)+1);
+  const need=['Контракт','Смета и объёмы','План работ','Акт','Журнал','Исполнительная · АОСР','Сертификаты и паспорта','Приёмка · КС-2','Приёмка · КС-3','Фотофиксация'];
+  const missing=need.filter(k=>!kinds[k]);
+  return head('Контроль','Документы',`${S.docs.length} документов · ${Object.keys(kinds).length} типов`,`<button class="btn pri sm" onclick="S.screen='wizard';S.step=4;render()">Загрузить ещё</button>`)+`<div class="page">
+  <div class="box rise"><div style="overflow-x:auto;max-height:420px"><table><thead><tr><th>документ</th><th>тип</th><th>объект</th><th>дата</th></tr></thead><tbody>${S.docs.slice(0,100).map(d=>`<tr><td style="font-size:13.5px"><span style="color:var(--o500);margin-right:8px">▤</span>${esc(d.name)}</td><td><span class="chip ${d.sure?'':'warn'}">${esc(d.kind)}</span></td><td><span class="chip ok">${esc(d.obj)}</span></td><td class="num" style="color:var(--ink-500);font-size:13px">${d.date}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="rec" style="margin-top:14px"><div class="eyebrow">Комплект по объекту: ${need.length-missing.length} из ${need.length}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${need.map(k=>`<span class="chip ${kinds[k]?'ok':'bad'}">${k}</span>`).join('')}</div><p style="font-size:13px;color:var(--ink-700);margin-top:10px;line-height:1.55">${missing.length?'Недостающие типы за две недели до приёмки попадут в сигналы руководителю и в задачи ПТО.':'Комплект закрыт полностью.'}</p></div></div>`}
+
+function pEstimates(){const e=S.estimates[0];if(!e)return head('Производство','Сметы','Смет пока нет')+`<div class="page">${empty('Смета — это план затрат','Загрузите файл, и система разложит его на позиции. Каждая закупка будет сверяться с этим планом.','Загрузить смету',"S.screen='wizard';S.step=3;render()",['Выгрузка из SmetaWIZARD или ГрандСметы','Обычная таблица Excel с наименованием и суммой','Из сметы формируются заявка снабженцу и ВОР прорабу'])}</div>`;
+  return head('Производство','Сметы',`${esc(e.file)} · ${e.items.length} позиций на ${m(e.total)}`,`<button class="btn sm" onclick="toast('Заявка снабженцу сформирована по позициям сметы')">Заявка снабженцу</button><button class="btn sm" onclick="toast('Ведомость объёмов работ для прораба сформирована')">ВОР прорабу</button>`)+`<div class="page"><div class="grid g4">${stat('Сумма позиций',rub(e.total),'<span class="chip">из файла</span>')}${stat('Позиций',e.items.length,'<span class="chip">прочитаны</span>')}${stat('Закуплено',m(0),'<span class="chip warn">закупок ещё не было</span>')}${stat('Отклонение','—','<span class="chip">появится с первой поставкой</span>')}</div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Позиции</div><div class="s">Колонка «факт» заполнится из поставок и нарядов</div></div></div><div style="overflow-x:auto;max-height:480px"><table><thead><tr><th style="width:30px">№</th><th>наименование</th><th>ед.</th><th style="text-align:right">кол-во</th><th style="text-align:right">по смете</th><th style="text-align:right">факт</th></tr></thead><tbody>${e.items.map((it,i)=>`<tr><td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td><td style="font-size:13.5px">${esc(it.name)}</td><td style="color:var(--ink-500);font-size:12.5px">${esc(it.unit)}</td><td class="num" style="text-align:right">${it.qty??'—'}</td><td class="num" style="text-align:right">${m(it.sum)}</td><td class="num" style="text-align:right;color:var(--ink-300)">—</td></tr>`).join('')}</tbody></table></div></div></div>`}
+
+function pFinance(){const o=S.objects[0];if(!o)return head('Контроль','Деньги','Пока нечего считать')+`<div class="page">${empty('Деньги считаются из контрактов и поставок','Появится контракт — система построит график ожидаемых оплат и включит прогноз кассового разрыва.','Завести контракт',"S.screen='wizard';S.step=2;render()")}</div>`;
+  return head('Контроль','Деньги',`Контракт № ${esc(o.number||'—')}${o.payTerm?' · оплата в течение '+o.payTerm+' дней после приёмки':''}`)+`<div class="page"><div class="grid g4">${stat('Цена контракта',o.price?m(o.price):'—','<span class="chip">доход по объекту</span>')}${stat('Получено',m(0),'<span class="chip warn">актов ещё не было</span>')}${stat('Затраты',m(0),'<span class="chip">с первой поставкой</span>')}${stat('Аванс',esc(o.advance||'—'),`<span class="chip ${/не /.test(o.advance||'')?'bad':''}">${/не /.test(o.advance||'')?'работы финансируем сами':'по контракту'}</span>`)}</div>
+  <div class="rec" style="margin-top:14px"><div class="eyebrow">Что система уже видит по деньгам</div><div style="display:grid;gap:10px;margin-top:10px;max-width:680px">${[[o.advance||'Условие аванса не найдено','Первые недели работ обычно финансируются из своих средств — главный риск по кассе.'],[o.payTerm?'Оплата через '+o.payTerm+' дней после подписания приёмки':'Срок оплаты не найден в документе','Срок считается от подписи заказчика, поэтому система следит за датой передачи КС-2.'],[o.penalty||'Неустойка не найдена','Начисляется при просрочке — система предупредит за две недели до срока.']].map(([t,d])=>`<div style="display:flex;gap:10px"><span class="dot" style="background:var(--o500);margin-top:8px"></span><div><div style="font-weight:600;font-size:14px">${esc(t)}</div><div style="font-size:13px;color:var(--ink-500);margin-top:3px">${d}</div></div></div>`).join('')}</div></div></div>`}
+
+function pTenders(){const c=S.company;return head('Продажи','Закупки',c?'Профиль готов — система может искать под вас':'Сначала заполните профиль',`<button class="btn pri sm" onclick="toast('Автопоиск сохранён: подходящие закупки будут приходить в Telegram с оценкой')">Настроить автопоиск</button>`)+`<div class="page">${c?`<div class="box rise" style="padding:22px"><div class="eyebrow" style="color:var(--o700)">По каким признакам отбираем</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px">${[['Виды работ',c.spec],['Регион',c.region],['Потолок суммы',c.cap],['Свободные бригады',c.crew]].map(([l,v])=>`<div class="box soft" style="padding:13px"><div class="eyebrow">${l}</div><div style="font-size:14px;margin-top:6px">${esc(v)}</div></div>`).join('')}</div><p style="font-size:13.5px;color:var(--ink-500);margin-top:14px;line-height:1.6;max-width:680px">Каждая закупка получит оценку от 0 до 100 с объяснением: профиль, аванс и отсрочка, число участников, загрузка бригад. Решение за вами.</p></div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Подключение к ЕИС</div><div class="s">Открытый доступ закрыт с 2025 года — нужен токен вашей организации</div></div></div><div style="padding:16px 20px;display:grid;gap:10px">${[['Организация зарегистрирована в ЕИС','есть'],['Квалифицированная подпись','есть'],['Токен из личного кабинета ЕИС','получить'],['Адрес сервиса данных','выдаётся с токеном']].map(([t,d],i)=>`<div style="display:flex;gap:12px;align-items:center"><b style="color:var(--o500);font-size:12px">0${i+1}</b><span style="flex:1;font-size:14px">${t}</span><span class="chip ${i<2?'ok':''}">${d}</span></div>`).join('')}</div></div>`:empty('Профиль не заполнен','Чтобы отбирать закупки, системе нужны ваши виды работ, регион, посильная сумма и число бригад.','Заполнить профиль',"S.screen='wizard';S.step=0;render()")}</div>`}
+
+function pTeam(){if(!S.team.length)return head('Компания','Команда','Пока только вы')+`<div class="page">${empty('Команда приглашается по ссылке','Каждый видит только своё: прораб — свои объекты, снабженец — заявки, тендерный менеджер — закупки. Финансы закрыты для всех, кроме руководителя и бухгалтера.','Пригласить людей',"S.screen='wizard';S.step=1;render()")}</div>`;
+  return head('Компания','Команда',`${S.team.length} ${plural(S.team.length,'человек','человека','человек')}`,`<button class="btn pri sm" onclick="S.screen='wizard';S.step=1;render()">Пригласить ещё</button>`)+`<div class="page"><div class="box rise"><table><thead><tr><th>человек</th><th>роль</th><th>что видит</th><th>состояние</th></tr></thead><tbody>${S.team.map(t=>`<tr><td><b>${esc(t.name)}</b><div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(t.contact)}</div></td><td><span class="chip">${t.role}</span></td><td style="font-size:13px;color:var(--ink-500)">${(ROLES.find(r=>r[0]===t.role)||['',''])[1]}</td><td><span class="chip warn">приглашение отправлено</span></td></tr>`).join('')}</tbody></table></div></div>`}
+
+function resetAll(){if(!confirm('Начать заново? Все заведённые данные этой компании будут очищены.'))return;
+  const key=S.key;S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false};
+  try{localStorage.removeItem('datum:'+key)}catch(e){}if(DB&&key){DB.doc('companies/'+key).delete().catch(()=>{})}render()}
+
+/* ═══ Обратная связь и «что нового» — то, ради чего пилот ═══ */
+const CHANGELOG_LOCAL=[
+  {v:'0.1',date:'15.09.2026',items:['Первый вход: компания, команда, объект, смета, документы','Загрузка папки объекта целиком: контракт, смета и документы читаются из ваших файлов','Данные сохраняются в облаке страницы и восстанавливаются по ИНН','Кнопка «Сообщить» — замечания уходят разработчику']}];
+function feedbackUI(){
+  if(S.screen==='welcome')return '';
+  return `<button onclick="S.feedback=true;render()" style="position:fixed;right:22px;bottom:22px;z-index:70;display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:99px;background:var(--ink);color:var(--bg);font-weight:600;font-size:13.5px;box-shadow:var(--shadow)"><span style="color:#DBA765">●</span>Сообщить</button>
+  ${S.feedback?`<div style="position:fixed;inset:0;z-index:80;background:rgba(11,13,16,.45);display:grid;place-items:center;padding:16px" onclick="if(event.target===this){S.feedback=false;render()}">
+    <div class="card rise" style="max-width:520px;width:100%;padding:24px">
+      <div class="eyebrow" style="color:var(--o700)">Пилотная версия ${VERSION}</div>
+      <h3 style="margin-top:8px;font-size:20px">Что не так или чего не хватает?</h3>
+      <p class="lede" style="margin-top:8px;font-size:13.5px">Пишите как есть: «не понял, куда нажать», «нет поля для…», «слетело после…». Сообщение уйдёт разработчику вместе с названием экрана.</p>
+      <div class="field" style="margin-top:16px"><span class="eyebrow">Экран</span><input id="fb_where" value="${esc(S.screen==='wizard'?'мастер · шаг '+(S.step+1):'раздел · '+S.page)}"></div>
+      <div class="field" style="margin-top:12px"><span class="eyebrow">Сообщение</span><textarea id="fb_text" rows="4" placeholder="Например: при загрузке папки не нашёл смету, хотя файл называется «Смета ЛС-1.xlsx»" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:14px;resize:vertical"></textarea></div>
+      <div class="field" style="margin-top:12px"><span class="eyebrow">Как с вами связаться (необязательно)</span><input id="fb_who" placeholder="имя, телефон или Telegram"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:18px"><button class="btn" onclick="S.feedback=false;render()">Отмена</button><button class="btn pri" onclick="sendFeedback()">Отправить</button></div>
+    </div></div>`:''}
+  ${S.changelog?`<div style="position:fixed;inset:0;z-index:80;background:rgba(11,13,16,.45);display:grid;place-items:center;padding:16px" onclick="if(event.target===this){S.changelog=false;render()}">
+    <div class="card rise" style="max-width:560px;width:100%;padding:24px;max-height:80vh;overflow-y:auto">
+      <div class="eyebrow" style="color:var(--o700)">Что нового</div>
+      <h3 style="margin-top:8px;font-size:20px">История изменений</h3>
+      <div style="display:grid;gap:14px;margin-top:16px">${(CHANGELOG||CHANGELOG_LOCAL).map(c=>`<div><div style="display:flex;gap:10px;align-items:baseline"><b>Версия ${esc(c.v)}</b><span class="eyebrow" style="font-weight:600">${esc(c.date)}</span></div><ul style="margin:8px 0 0 18px;color:var(--ink-500);font-size:13.5px;line-height:1.6">${(c.items||[]).map(i=>`<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn" onclick="S.changelog=false;render()">Закрыть</button></div>
+    </div></div>`:''}`;
+}
+async function sendFeedback(){
+  const text=(document.getElementById('fb_text').value||'').trim();if(!text){toast('Напишите хотя бы пару слов');return}
+  const rec={company:S.key,companyName:S.company?S.company.name:null,where:document.getElementById('fb_where').value,who:document.getElementById('fb_who').value,text,version:VERSION,ua:navigator.userAgent.slice(0,120),at:new Date().toISOString()};
+  const id='fb_'+Date.now();
+  let ok=false;if(DB){try{await DB.doc('feedback/'+id).set(rec);ok=true}catch(e){}}
+  try{const arr=JSON.parse(localStorage.getItem('datum:feedback')||'[]');arr.push(rec);localStorage.setItem('datum:feedback',JSON.stringify(arr))}catch(e){}
+  S.feedback=false;render();
+  if(ok){toast('Спасибо — сообщение ушло разработчику');return}
+  // без облака — отправляем через Telegram: текст уже готов, остаётся выбрать чат
+  const msg=`DATUM ${VERSION} · ${rec.where}\n${rec.companyName||'компания '+(rec.company||'')}\n\n${text}${rec.who?'\n\nСвязь: '+rec.who:''}`;
+  try{await navigator.clipboard.writeText(msg)}catch(e){}
+  window.open('https://t.me/share/url?url='+encodeURIComponent(location.href.split('#')[0])+'&text='+encodeURIComponent(msg),'_blank');
+  toast('Сообщение скопировано и открыт Telegram — выберите чат, куда отправить')}
+
+/* сохранять после каждого значимого действия */
+['saveCompany','addMember','saveObject','finishWizard','skipStep','connectTelegram','contractSample','estimateSample','docsSample','manualObject','lookupInn'].forEach(name=>{const f=window[name];if(typeof f==='function')window[name]=function(){const r=f.apply(this,arguments);Promise.resolve(r).then(()=>persist());return r}});
+const _go=go;go=function(p){_go(p);persist()};
+const _onObjectFiles=onObjectFiles;onObjectFiles=async function(files){await _onObjectFiles(files);persist()};
+const _onObjectFilesMore=onObjectFilesMore;onObjectFilesMore=async function(files){await _onObjectFilesMore(files);persist()};
+const _onEstimateFiles=onEstimateFiles;onEstimateFiles=async function(files){await _onEstimateFiles(files);persist()};
+const _onDocFiles=onDocFiles;onDocFiles=function(files){_onDocFiles(files);setTimeout(persist,900)};
+render();
+</script>
+</body>
+</html>
