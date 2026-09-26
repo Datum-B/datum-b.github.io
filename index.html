@@ -159,7 +159,7 @@ window.addEventListener('DOMContentLoaded',function(){if(window.pdfjsLib){pdfjsL
 </script>
 <script>
 /* ═══ DATUM · первый вход. Файлы читаются в браузере и никуда не отправляются. ═══ */
-const TODAY=new Date(2026,8,13);
+const TODAY=(d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()))(new Date());
 const dt=o=>new Date(TODAY.getTime()+o*864e5).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'});
 const m=n=>{const a=Math.abs(n||0);if(a>=1e6)return (n/1e6).toLocaleString('ru-RU',{maximumFractionDigits:1})+' млн ₽';if(a>=1e3)return Math.round(n/1e3).toLocaleString('ru-RU')+' тыс ₽';return Math.round(n||0).toLocaleString('ru-RU')+' ₽'};
 const rub=n=>(n||0).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
@@ -169,11 +169,11 @@ const el=()=>document.getElementById('app');
 const MARK=(sz=22,ink='currentColor',dot='#B9762B')=>`<svg viewBox="0 0 32 32" width="${sz}" height="${sz}" aria-label="DATUM"><path d="M6.4 8.8 L26 13.4 L14 26.8 Z" fill="none" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/><g fill="${ink}"><circle cx="6.4" cy="8.8" r="2.3"/><circle cx="26" cy="13.4" r="2.3"/><circle cx="14" cy="26.8" r="2.3"/></g><circle cx="15.6" cy="16.2" r="3.4" fill="${dot}"/></svg>`;
 
 const VERSION='0.1 · пилот';
-let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false,tenders:[],eis:null,eisErr:null,tq:'',tsearch:'',tview:'eis'};
+let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false,tenders:[],eis:null,eisErr:null,tq:'',tsearch:'',tview:'eis',schedule:null};
 
 /* ═══ Сохранение: база страницы (общая для всех, кто открыл ссылку) + запас в браузере ═══ */
 let DB=null, CHANGELOG=null;
-const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page','tenders'];
+const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page','tenders','schedule'];
 function snapshot(){const o={};SAVE_KEYS.forEach(k=>o[k]=S[k]);o.updatedAt=new Date().toISOString();o.version=VERSION;return o}
 async function persist(){if(!S.key)return;const data=snapshot();
   try{localStorage.setItem('datum:'+S.key,JSON.stringify(data));localStorage.setItem('datum:last',S.key)}catch(e){}
@@ -696,13 +696,68 @@ function pDash(){const o=S.objects[0],e=S.estimates[0],list=progress(),done=list
 
 function pObjects(){const o=S.objects[0];return head('Производство','Объекты',o?'1 объект · данные из контракта':'Объектов пока нет',`<button class="btn pri sm" onclick="S.screen='wizard';S.step=2;render()">Добавить объект</button>`)+`<div class="page">${o?`<div class="box rise"><div style="overflow-x:auto"><table><thead><tr><th>объект</th><th>заказчик</th><th style="text-align:right">цена</th><th>срок</th></tr></thead><tbody><tr style="cursor:pointer" onclick="go('schedule')"><td><b>${esc(o.code)}</b> · ${esc(o.subject||'—')}<div class="eyebrow" style="margin-top:4px;font-weight:600">${esc(o.address||'адрес не указан')}</div></td><td style="font-size:13px;color:var(--ink-500);max-width:300px">${esc((o.customer||'—').slice(0,70))}</td><td class="num" style="text-align:right">${o.price?m(o.price):'—'}</td><td class="num">${esc(o.end||'—')}</td></tr></tbody></table></div></div>`:empty('Объектов пока нет','Объект появляется из контракта: система прочитает заказчика, сумму, сроки, разобьёт срок на этапы и заведёт перечень документов.','Добавить объект',"S.screen='wizard';S.step=2;render()",['Файлом — PDF или Word контракта','Вручную — если контракт ещё не подписан','Из ЕИС по номеру — после подключения токена'])}</div>`}
 
-function pSchedule(){const o=S.objects[0];if(!o)return head('Производство','График работ','Появится вместе с объектом')+`<div class="page">${empty('График строится из контракта','Как только появится объект, система разложит срок на этапы и построит календарный график по дням.','Завести объект',"S.screen='wizard';S.step=2;render()")}</div>`;
+/* ═══ График работ: строится из контракта, дальше корректируется руками; каждая правка — в журнале ═══ */
+const ISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fromISO=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3]):null};
+const ruD=s=>{const d=fromISO(s);return d?d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}):'—'};
+const pdRu=s=>{const x=String(s||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);return x?new Date(+x[3],+x[2]-1,+x[1]):null};
+function buildSchedule(o){
   const names=['Подготовка объекта','Демонтажные работы','Черновая отделка','Инженерные сети','Чистовая отделка','Сдача и приёмка'];
-  const pd=s=>{const x=String(s).match(/(\d{2})\.(\d{2})\.(\d{4})/);return x?new Date(+x[3],+x[2]-1,+x[1]):null};
-  const a=pd(o.start)||new Date(TODAY.getTime()-20*864e5),b=pd(o.end)||new Date(a.getTime()+42*864e5);const off=d=>Math.round((d-TODAY)/864e5);
-  const s0=off(a),s1=off(b),span=(s1-s0)/names.length,W=760,L=200,min=s0-3,max=s1+3,x=d=>L+((d-min)/(max-min))*(W-L-14);
-  return head('Производство','График работ',`${esc(o.code)} · ${names.length} этапов · ${Math.max(1,s1-s0)} дней по контракту`)+`<div class="page"><div class="box rise"><div class="box-h"><div><div class="t">Календарный график</div><div class="s">Построен из срока контракта ${esc(o.start||'')} — ${esc(o.end||'')}. Выполнение отметит прораб</div></div></div>
-  <div style="padding:20px;overflow-x:auto"><svg width="100%" viewBox="0 0 ${W} ${names.length*36+48}" style="display:block;min-width:600px">${names.map((n,i)=>{const y=22+i*36,f=s0+span*i,t=s0+span*(i+1);return `<text x="0" y="${y+12}" font-size="12" fill="var(--ink-500)" font-weight="600">0${i+1}</text><text x="26" y="${y+12}" font-size="12.5" fill="var(--ink)">${n}</text><text x="0" y="${y+26}" font-size="10" fill="var(--ink-300)">${dt(f)} — ${dt(t)}</text><rect x="${x(f).toFixed(1)}" y="${y}" width="${(x(t)-x(f)).toFixed(1)}" height="16" rx="4" fill="var(--o100)" stroke="var(--o300)"/>`}).join('')}<line x1="${x(0)}" x2="${x(0)}" y1="8" y2="${names.length*36+20}" stroke="var(--o500)" stroke-width="1.5"/><text x="${x(0)+6}" y="${names.length*36+40}" font-size="10" fill="var(--o700)" font-weight="700" letter-spacing="1.5">СЕГОДНЯ</text></svg></div></div></div>`}
+  const a=pdRu(o.start)||new Date(TODAY.getTime()-20*864e5),b=pdRu(o.end)||new Date(a.getTime()+42*864e5);
+  const days=Math.max(names.length,Math.round((b-a)/864e5));const span=days/names.length;
+  return {obj:o.code||'',contractEnd:ISO(b),stages:names.map((n,i)=>{const f=new Date(a.getTime()+Math.round(span*i)*864e5),t=new Date(a.getTime()+(i===names.length-1?days:Math.round(span*(i+1))-1)*864e5);return {id:'s'+(i+1),name:n,start:ISO(f),end:ISO(t),done:0,note:''}}),log:[{at:ISO(TODAY),text:'График построен из срока контракта '+(o.start||'')+' — '+(o.end||'')}]};
+}
+function ensureSchedule(){const o=S.objects[0];if(!o)return null;if(!S.schedule||S.schedule.obj!==(o.code||''))S.schedule=buildSchedule(o);return S.schedule}
+function schedLog(text){const sc=S.schedule;sc.log.unshift({at:ISO(TODAY),text});sc.log=sc.log.slice(0,30)}
+function schedUpd(id,field,value){const sc=S.schedule;const st=sc.stages.find(x=>x.id===id);if(!st)return;const old=st[field];
+  if(field==='done'){value=Math.max(0,Math.min(100,parseInt(value,10)||0))}
+  if((field==='start'||field==='end')&&!fromISO(value)){toast('Дата не распознана');render();return}
+  if(field==='start'&&fromISO(value)>fromISO(st.end)){st.end=value}
+  if(field==='end'&&fromISO(value)<fromISO(st.start)){st.start=value}
+  if(String(old)===String(value))return;st[field]=value;
+  const lbl={name:'название',start:'начало',end:'окончание',done:'выполнение',note:'заметка'}[field];
+  schedLog(`«${st.name}»: ${lbl} ${field==='start'||field==='end'?ruD(old)+' → '+ruD(value):field==='done'?old+'% → '+value+'%':field==='note'?'изменена':'«'+old+'» → «'+value+'»'}`);
+  render();toast('Сохранено')}
+function schedAdd(){const sc=S.schedule;const last=sc.stages[sc.stages.length-1];const f=last?fromISO(last.end):TODAY;const st={id:'s'+Date.now(),name:'Новый этап',start:ISO(new Date(f.getTime()+864e5)),end:ISO(new Date(f.getTime()+7*864e5)),done:0,note:''};sc.stages.push(st);schedLog('Добавлен этап «Новый этап»');render();setTimeout(()=>{const i=document.getElementById('sn_'+st.id);if(i){i.focus();i.select()}},0)}
+function schedDel(id){const sc=S.schedule;const st=sc.stages.find(x=>x.id===id);if(!st)return;if(sc.stages.length<=1){toast('Последний этап удалить нельзя');return}sc.stages=sc.stages.filter(x=>x.id!==id);schedLog('Удалён этап «'+st.name+'»');render()}
+function schedMove(id,dir){const sc=S.schedule;const i=sc.stages.findIndex(x=>x.id===id);const j=i+dir;if(i<0||j<0||j>=sc.stages.length)return;[sc.stages[i],sc.stages[j]]=[sc.stages[j],sc.stages[i]];render()}
+function schedShift(){const n=parseInt((document.getElementById('sh_days')||{}).value,10);if(!n){toast('Укажите, на сколько дней сдвинуть');return}
+  S.schedule.stages.forEach(st=>{if(st.done>=100)return;st.start=ISO(new Date(fromISO(st.start).getTime()+n*864e5));st.end=ISO(new Date(fromISO(st.end).getTime()+n*864e5))});
+  schedLog(`Все незавершённые этапы сдвинуты на ${n>0?'+':''}${n} дн.`);render();toast('График сдвинут')}
+function schedReset(){if(!confirm('Перестроить график из срока контракта? Ваши правки будут потеряны.'))return;const o=S.objects[0];S.schedule=buildSchedule(o);schedLog('График перестроен по контракту');render()}
+function pSchedule(){const o=S.objects[0];if(!o)return head('Производство','График работ','Появится вместе с объектом')+`<div class="page">${empty('График строится из контракта','Как только появится объект, система разложит срок на этапы и построит календарный график по дням. Дальше сроки правятся прямо в таблице.','Завести объект',"S.screen='wizard';S.step=2;render()")}</div>`;
+  const sc=ensureSchedule();const st=sc.stages;
+  const off=d=>Math.round((d-TODAY)/864e5);
+  const starts=st.map(x=>fromISO(x.start)).filter(Boolean),ends=st.map(x=>fromISO(x.end)).filter(Boolean);
+  const s0=Math.min(...starts.map(off),0)-3,s1=Math.max(...ends.map(off),0)+3;
+  const W=760,L=210,x=d=>L+((d-s0)/(s1-s0))*(W-L-14);
+  const cEnd=fromISO(sc.contractEnd);const lastEnd=new Date(Math.max(...ends));const over=cEnd?Math.round((lastEnd-cEnd)/864e5):0;
+  const late=st.filter(x=>fromISO(x.end)<TODAY&&x.done<100);
+  const total=st.reduce((a,x)=>a+Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0);
+  const prog=Math.round(st.reduce((a,x)=>a+x.done*Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0)/total);
+  const bar=(x0,x1,y,h,fill,stroke)=>`<rect x="${x0.toFixed(1)}" y="${y}" width="${Math.max(2,x1-x0).toFixed(1)}" height="${h}" rx="4" fill="${fill}" ${stroke?`stroke="${stroke}"`:''}/>`;
+  return head('Производство','График работ',`${esc(o.code)} · ${st.length} ${plural(st.length,'этап','этапа','этапов')} · выполнено ${prog}% · срок по контракту ${ruD(sc.contractEnd)}`,
+    `<button class="btn sm" onclick="schedReset()">Перестроить по контракту</button><button class="btn pri sm" onclick="schedAdd()">＋ Этап</button>`)+`<div class="page">
+  ${over>0?`<div class="rec" style="margin-bottom:14px;border-left-color:var(--danger);background:var(--danger-50)"><b>График выходит за срок контракта на ${over} ${plural(over,'день','дня','дней')}</b> — последний этап заканчивается ${ruD(ISO(lastEnd))}, контракт до ${ruD(sc.contractEnd)}. Это основание для неустойки; сожмите этапы или оформите допсоглашение о переносе срока.</div>`:''}
+  ${late.length?`<div class="rec" style="margin-bottom:14px;border-left-color:var(--warn);background:var(--warn-50)"><b>${late.length} ${plural(late.length,'этап просрочен','этапа просрочены','этапов просрочены')}:</b> ${late.map(x=>esc(x.name)+' (до '+ruD(x.end)+', выполнено '+x.done+'%)').join('; ')}. Поправьте сроки или отметьте выполнение.</div>`:''}
+  <div class="box rise"><div class="box-h"><div><div class="t">Календарный график</div><div class="s">Серым — план, охрой — выполнение. Даты и проценты правятся в таблице ниже</div></div></div>
+  <div style="padding:20px;overflow-x:auto"><svg width="100%" viewBox="0 0 ${W} ${st.length*36+48}" style="display:block;min-width:600px">${st.map((n,i)=>{const y=22+i*36,f=off(fromISO(n.start)),t=off(fromISO(n.end))+1;const isLate=fromISO(n.end)<TODAY&&n.done<100;
+      return `<text x="0" y="${y+12}" font-size="12" fill="var(--ink-500)" font-weight="600">${String(i+1).padStart(2,'0')}</text><text x="26" y="${y+12}" font-size="12.5" fill="var(--ink)">${esc(n.name).slice(0,28)}</text><text x="0" y="${y+26}" font-size="10" fill="${isLate?'var(--danger)':'var(--ink-300)'}">${ruD(n.start)} — ${ruD(n.end)} · ${n.done}%</text>${bar(x(f),x(t),y,16,'var(--surface)',isLate?'var(--danger)':'var(--line)')}${n.done>0?bar(x(f),x(f)+(x(t)-x(f))*n.done/100,y,16,'var(--o300)'):''}`}).join('')}<line x1="${x(0)}" x2="${x(0)}" y1="8" y2="${st.length*36+20}" stroke="var(--o500)" stroke-width="1.5"/><text x="${x(0)+6}" y="${st.length*36+40}" font-size="10" fill="var(--o700)" font-weight="700" letter-spacing="1.5">СЕГОДНЯ</text>${cEnd?`<line x1="${x(off(cEnd)+1)}" x2="${x(off(cEnd)+1)}" y1="8" y2="${st.length*36+20}" stroke="var(--danger)" stroke-width="1" stroke-dasharray="3 3"/><text x="${x(off(cEnd)+1)-4}" y="${st.length*36+40}" text-anchor="end" font-size="10" fill="var(--danger)" font-weight="700" letter-spacing="1.5">СРОК КОНТРАКТА</text>`:''}</svg></div></div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Этапы</div><div class="s">Измените дату, процент или название — график перестроится, правка попадёт в журнал</div></div>
+    <div style="display:flex;gap:8px;align-items:center"><input id="sh_days" type="number" placeholder="дней" style="width:84px" title="На сколько дней сдвинуть незавершённые этапы (минус — назад)"><button class="btn sm" onclick="schedShift()">Сдвинуть незавершённые</button></div></div>
+  <div style="overflow-x:auto"><table><thead><tr><th style="width:30px">№</th><th>этап</th><th>начало</th><th>окончание</th><th style="text-align:right">дней</th><th>выполнено</th><th>заметка</th><th></th></tr></thead><tbody>
+  ${st.map((n,i)=>{const d=off(fromISO(n.end))-off(fromISO(n.start))+1;const isLate=fromISO(n.end)<TODAY&&n.done<100;return `<tr>
+    <td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td>
+    <td><input id="sn_${n.id}" value="${esc(n.name)}" onchange="schedUpd('${n.id}','name',this.value)" style="min-width:200px;font-weight:600"></td>
+    <td><input type="date" value="${n.start}" onchange="schedUpd('${n.id}','start',this.value)" style="width:150px"></td>
+    <td><input type="date" value="${n.end}" onchange="schedUpd('${n.id}','end',this.value)" style="width:150px;${isLate?'border-color:var(--danger);color:var(--danger)':''}"></td>
+    <td class="num" style="text-align:right;color:var(--ink-500)">${d}</td>
+    <td><div style="display:flex;align-items:center;gap:6px"><input type="number" min="0" max="100" step="5" value="${n.done}" onchange="schedUpd('${n.id}','done',this.value)" style="width:70px">%${n.done>=100?'<span class="chip ok">готово</span>':isLate?'<span class="chip bad">просрочен</span>':''}</div></td>
+    <td><input value="${esc(n.note||'')}" placeholder="что важно знать" onchange="schedUpd('${n.id}','note',this.value)" style="min-width:180px"></td>
+    <td style="white-space:nowrap;text-align:right"><button class="btn sm ghost" title="Выше" onclick="schedMove('${n.id}',-1)">↑</button><button class="btn sm ghost" title="Ниже" onclick="schedMove('${n.id}',1)">↓</button><button class="btn sm ghost" title="Удалить этап" onclick="schedDel('${n.id}')" style="color:var(--danger)">✕</button></td></tr>`}).join('')}
+  </tbody></table></div></div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Журнал корректировок</div><div class="s">Кто и что менял — видно и руководителю, и заказчику при спорах о сроках</div></div></div>
+    <div style="padding:6px 20px 14px">${sc.log.slice(0,10).map(l=>`<div style="display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px"><span class="num" style="color:var(--ink-300);white-space:nowrap">${ruD(l.at)}</span><span>${esc(l.text)}</span></div>`).join('')||'<span style="color:var(--ink-300);font-size:13px">Правок пока не было</span>'}</div></div></div>`}
 
 function pDocs(){if(!S.docs.length)return head('Контроль','Документы','Хранилище пустое')+`<div class="page">${empty('Документы загружаются папкой','Выберите папку объекта: система определит тип каждого файла и привяжет к объекту. Дальше она следит за комплектностью.','Загрузить документы',"S.screen='wizard';S.step=4;render()",['pdf, docx, xlsx и фотографии','Тип определяется по названию, его можно поправить','Для каждого объекта система знает обязательный комплект'])}</div>`;
   const kinds={};S.docs.forEach(d=>kinds[d.kind]=(kinds[d.kind]||0)+1);
