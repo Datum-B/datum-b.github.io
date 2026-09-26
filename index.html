@@ -274,6 +274,36 @@ function parseContract(raw){
 }
 
 /* ═══ Разбор сметы ═══ */
+/* ═══ Локальный сметный расчёт (SmetaWIZARD, ГрандСмета): позиции = строки с № п.п., сумма = «Всего по позиции» ═══ */
+function parseLSR(rows){
+  const clean=v=>String(v==null?'':v).replace(/[\s ]/g,'').replace(',','.');
+  const toNum=v=>{const c=clean(v);return /^-?\d+(\.\d+)?$/.test(c)?parseFloat(c):null};
+  let hdr=-1,cN=2,cU=3,cQ=4;
+  for(let i=0;i<Math.min(rows.length,120);i++){const h=(rows[i]||[]).map(c=>String(c).toLowerCase());
+    const iO=h.findIndex(c=>/обоснован/.test(c)),iN=h.findIndex(c=>/наимен.*(работ|затрат)/.test(c));
+    if(iO>=0&&iN>=0){hdr=i;cN=iN;cU=h.findIndex(c=>/единиц/.test(c));cQ=h.findIndex(c=>/количеств/.test(c));if(cU<0)cU=iN+1;if(cQ<0)cQ=iN+2;break}}
+  if(hdr<0)return null;
+  const lastNum=r=>{for(let k=r.length-1;k>=0;k--){const n=toNum(r[k]);if(n!=null)return n}return null};
+  const items=[],sections=[],extras=[];let cur=null,section='',subtotal=null,vat=null,vatNote='',grand=null,afterTotal=false;
+  for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const c0=String(r[0]||'').trim();const name=String(r[cN]||'').trim();
+    const secM=c0.match(/^Раздел\s*(\d+)\.?\s*(.*)$/i);
+    if(secM){section=(secM[2]||'').replace(/[<>]/g,'').trim()||('Раздел '+secM[1]);sections.push(section);cur=null;continue}
+    if(r.length<=2&&c0&&toNum(c0)==null&&!/^(итого|всего|составил|проверил|\(|справочно)/i.test(c0)){section=c0;sections.push(section);continue}
+    if(/^\d+$/.test(c0)&&name&&toNum(name)==null){cur={num:+c0,section,code:String(r[1]||'').trim(),name:name.replace(/V=.*$/,'').replace(/\s+/g,' ').trim().slice(0,160),unit:String(r[cU]||'').trim()||'—',qty:toNum(r[cQ]),sum:lastNum(r)};items.push(cur);continue}
+    if(/^Всего по позиции/i.test(name)&&cur){const n=lastNum(r);if(n!=null)cur.sum=n;continue}
+    if(/^(ВСЕГО по смете|Итого по разделам)/i.test(name)){const n=lastNum(r);if(n!=null)subtotal=n;afterTotal=true;continue}
+    if(!afterTotal)continue;
+    if(/^НДС/i.test(name)){const n=lastNum(r);if(n!=null&&!/не облагается/i.test(name))vat=n;else vatNote=name.replace(/\s+/g,' ').slice(0,80);continue}
+    if(/^Итого/i.test(name)){const n=lastNum(r);if(n!=null)grand=n;continue}
+    if(/^(Прогнозный|Индекс|Коэффициент|Временн|Зимн|Непредвид|Лимитир|Прочие|Сметная прибыль|Накладные)/i.test(name)){const n=lastNum(r);if(n!=null&&n!==0&&!/^(Всего|в том числе)/i.test(name))extras.push({name:name.replace(/\s+/g,' ').slice(0,90),sum:n})}}
+  const good=items.filter(it=>it.sum!=null&&it.sum>0);if(good.length<2)return null;
+  const posSum=good.reduce((a,b)=>a+b.sum,0);
+  const extrasSum=extras.reduce((a,b)=>a+b.sum,0);
+  const total=grand!=null?grand:(subtotal!=null?subtotal:posSum)+(grand==null?0:0);
+  const expected=posSum+extrasSum+(vat||0);
+  return {kind:'lsr',items:good,sections:[...new Set(sections)],posSum,subtotal,extras,vat,vatNote,total,
+    consistent:Math.abs(total-expected)<1||Math.abs((subtotal!=null?subtotal:posSum)-posSum)<1&&grand==null,header:true};
+}
 function parseEstimate(rows){
   const isNum=v=>{const s=String(v).replace(/[\s ]/g,'');return s!==''&&/^-?\d+([.,]\d+)?$/.test(s)};
   let hdr=-1,col={};
@@ -363,8 +393,8 @@ async function onObjectFilesMore(files){
       S.docs.push({name:f.name,size:f.size,kind,sure,obj:code,date:f.lastModified?new Date(f.lastModified).toLocaleDateString('ru-RU'):'—'})});
     if(!S.estimates.length){
       for(const f of files.filter(f=>['xlsx','xls','xlsm','csv','docx'].includes(ext(f.name)))){
-        try{const rows=ext(f.name)==='docx'?await readDocxTables(f):await readXlsx(f);const r=parseEstimate(rows);
-          if(r.items.length>=3){S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header}];break}}catch(e){}
+        try{const rows=ext(f.name)==='docx'?await readDocxTables(f):await readXlsx(f);const r=parseLSR(rows)||parseEstimate(rows);
+          if(r.items.length>=3){S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections}];break}}catch(e){}
       }
     }
     if(S.objects[0])S.objects[0].bundle=S.docs.length;
@@ -384,9 +414,9 @@ async function onEstimateFiles(files){const f=files[0];if(!f)return;
     if(['xlsx','xls','xlsm','csv'].includes(e))rows=await readXlsx(f);
     else if(e==='docx')rows=await readDocxTables(f);
     else throw new Error('Смету читаем из Excel (.xlsx) или Word (.docx). Формат .'+e+' не поддержан.');
-    const r=parseEstimate(rows);
+    const r=parseLSR(rows)||parseEstimate(rows);
     if(!r.items.length)throw new Error('Не нашёл позиций: в таблице нет колонки с наименованием и суммой. Проверьте, что это смета, а не пояснительная записка.');
-    S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header}];
+    S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections}];
     done();toast(`Прочитано ${r.items.length} ${plural(r.items.length,'позиция','позиции','позиций')}`)}
   catch(e){fail(e.message||String(e))}}
 function estimateSample(){S.estimates=[{file:'пример · смета ЛС-1',header:true,items:[
@@ -584,7 +614,7 @@ function stepEstimate(){const e=S.estimates[0],o=S.objects[0];bindDrop('drop_e',
       <button class="btn sm ghost" onclick="S.estimates=[];render()">Другой файл</button></div>
     <div class="box" style="margin-top:14px;overflow:hidden"><div style="overflow-x:auto;max-height:380px"><table>
       <thead><tr><th style="width:30px">№</th><th>наименование</th><th>ед.</th><th style="text-align:right">кол-во</th><th style="text-align:right">сумма</th></tr></thead>
-      <tbody>${e.items.slice(0,60).map((it,i)=>`<tr><td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td><td style="font-size:13.5px">${esc(it.name)}</td><td style="color:var(--ink-500);font-size:12.5px">${esc(it.unit)}</td><td class="num" style="text-align:right">${it.qty??'—'}</td><td class="num" style="text-align:right">${m(it.sum)}</td></tr>`).join('')}
+      <tbody>${e.items.slice(0,60).map((it,i)=>`<tr><td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td><td style="font-size:13.5px">${esc(it.name)}${it.code?`<div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(it.code)}${it.section?' · '+esc(it.section):''}</div>`:''}</td><td style="color:var(--ink-500);font-size:12.5px">${esc(it.unit)}</td><td class="num" style="text-align:right">${it.qty??'—'}</td><td class="num" style="text-align:right">${m(it.sum)}</td></tr>`).join('')}
       ${e.items.length>60?`<tr><td colspan="5" class="eyebrow" style="text-align:center">… ещё ${e.items.length-60} позиций</td></tr>`:''}</tbody></table></div>
       <div style="padding:12px 14px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline"><span class="eyebrow">итого по позициям</span><b class="num" style="font-size:17px;color:var(--o700)">${rub(e.total)}</b></div></div>
     <div class="rec" style="margin-top:14px"><div class="eyebrow">Проверка на входе</div>
@@ -677,8 +707,8 @@ function pDocs(){if(!S.docs.length)return head('Контроль','Докуме�
   <div class="rec" style="margin-top:14px"><div class="eyebrow">Комплект по объекту: ${need.length-missing.length} из ${need.length}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${need.map(k=>`<span class="chip ${kinds[k]?'ok':'bad'}">${k}</span>`).join('')}</div><p style="font-size:13px;color:var(--ink-700);margin-top:10px;line-height:1.55">${missing.length?'Недостающие типы за две недели до приёмки попадут в сигналы руководителю и в задачи ПТО.':'Комплект закрыт полностью.'}</p></div></div>`}
 
 function pEstimates(){const e=S.estimates[0];if(!e)return head('Производство','Сметы','Смет пока нет')+`<div class="page">${empty('Смета — это план затрат','Загрузите файл, и система разложит его на позиции. Каждая закупка будет сверяться с этим планом.','Загрузить смету',"S.screen='wizard';S.step=3;render()",['Выгрузка из SmetaWIZARD или ГрандСметы','Обычная таблица Excel с наименованием и суммой','Из сметы формируются заявка снабженцу и ВОР прорабу'])}</div>`;
-  return head('Производство','Сметы',`${esc(e.file)} · ${e.items.length} позиций на ${m(e.total)}`,`<button class="btn sm" onclick="toast('Заявка снабженцу сформирована по позициям сметы')">Заявка снабженцу</button><button class="btn sm" onclick="toast('Ведомость объёмов работ для прораба сформирована')">ВОР прорабу</button>`)+`<div class="page"><div class="grid g4">${stat('Сумма позиций',rub(e.total),'<span class="chip">из файла</span>')}${stat('Позиций',e.items.length,'<span class="chip">прочитаны</span>')}${stat('Закуплено',m(0),'<span class="chip warn">закупок ещё не было</span>')}${stat('Отклонение','—','<span class="chip">появится с первой поставкой</span>')}</div>
-  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Позиции</div><div class="s">Колонка «факт» заполнится из поставок и нарядов</div></div></div><div style="overflow-x:auto;max-height:480px"><table><thead><tr><th style="width:30px">№</th><th>наименование</th><th>ед.</th><th style="text-align:right">кол-во</th><th style="text-align:right">по смете</th><th style="text-align:right">факт</th></tr></thead><tbody>${e.items.map((it,i)=>`<tr><td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td><td style="font-size:13.5px">${esc(it.name)}</td><td style="color:var(--ink-500);font-size:12.5px">${esc(it.unit)}</td><td class="num" style="text-align:right">${it.qty??'—'}</td><td class="num" style="text-align:right">${m(it.sum)}</td><td class="num" style="text-align:right;color:var(--ink-300)">—</td></tr>`).join('')}</tbody></table></div></div></div>`}
+  return head('Производство','Сметы',`${esc(e.file)} · ${e.items.length} позиций на ${m(e.total)}`,`<button class="btn sm" onclick="toast('Заявка снабженцу сформирована по позициям сметы')">Заявка снабженцу</button><button class="btn sm" onclick="toast('Ведомость объёмов работ для прораба сформирована')">ВОР прорабу</button>`)+`<div class="page"><div class="grid g4">${stat(e.kind==='lsr'?'Итого по смете':'Сумма позиций',rub(e.total),e.kind==='lsr'?(e.consistent?'<span class="chip ok">сходится: позиции + начисления</span>':'<span class="chip warn">проверьте: позиции дают '+rub(e.posSum)+'</span>'):'<span class="chip">из файла</span>')}${stat('Позиций',e.items.length,e.kind==='lsr'?'<span class="chip">сумма позиций '+rub(e.posSum)+'</span>':'<span class="chip">прочитаны</span>')}${e.kind==='lsr'?stat('Начисления сверху',rub((e.extras||[]).reduce((a,b)=>a+b.sum,0)+(e.vat||0)),(e.extras||[]).map(x=>'<span class="chip">'+esc(x.name.slice(0,34))+' '+rub(x.sum)+'</span>').join(' ')+(e.vat?'<span class="chip">НДС '+rub(e.vat)+'</span>':e.vatNote?'<span class="chip">'+esc(e.vatNote.slice(0,40))+'</span>':'')):''}${stat('Закуплено',m(0),'<span class="chip warn">закупок ещё не было</span>')}${e.kind==='lsr'?'':stat('Отклонение','—','<span class="chip">появится с первой поставкой</span>')}</div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Позиции</div><div class="s">Колонка «факт» заполнится из поставок и нарядов</div></div></div><div style="overflow-x:auto;max-height:480px"><table><thead><tr><th style="width:30px">№</th><th>наименование</th><th>ед.</th><th style="text-align:right">кол-во</th><th style="text-align:right">по смете</th><th style="text-align:right">факт</th></tr></thead><tbody>${e.items.map((it,i)=>`<tr><td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td><td style="font-size:13.5px">${esc(it.name)}${it.code?`<div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(it.code)}${it.section?' · '+esc(it.section):''}</div>`:''}</td><td style="color:var(--ink-500);font-size:12.5px">${esc(it.unit)}</td><td class="num" style="text-align:right">${it.qty??'—'}</td><td class="num" style="text-align:right">${m(it.sum)}</td><td class="num" style="text-align:right;color:var(--ink-300)">—</td></tr>`).join('')}</tbody></table></div></div></div>`}
 
 function pFinance(){const o=S.objects[0];if(!o)return head('Контроль','Деньги','Пока нечего считать')+`<div class="page">${empty('Деньги считаются из контрактов и поставок','Появится контракт — система построит график ожидаемых оплат и включит прогноз кассового разрыва.','Завести контракт',"S.screen='wizard';S.step=2;render()")}</div>`;
   return head('Контроль','Деньги',`Контракт № ${esc(o.number||'—')}${o.payTerm?' · оплата в течение '+o.payTerm+' дней после приёмки':''}`)+`<div class="page"><div class="grid g4">${stat('Цена контракта',o.price?m(o.price):'—','<span class="chip">доход по объекту</span>')}${stat('Получено',m(0),'<span class="chip warn">актов ещё не было</span>')}${stat('Затраты',m(0),'<span class="chip">с первой поставкой</span>')}${stat('Аванс',esc(o.advance||'—'),`<span class="chip ${/не /.test(o.advance||'')?'bad':''}">${/не /.test(o.advance||'')?'работы финансируем сами':'по контракту'}</span>`)}</div>
