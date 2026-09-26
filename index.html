@@ -216,11 +216,11 @@ const el=()=>document.getElementById('app');
 const MARK=(sz=22,ink='currentColor',dot='#B9762B')=>`<svg viewBox="0 0 32 32" width="${sz}" height="${sz}" aria-label="DATUM"><path d="M6.4 8.8 L26 13.4 L14 26.8 Z" fill="none" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/><g fill="${ink}"><circle cx="6.4" cy="8.8" r="2.3"/><circle cx="26" cy="13.4" r="2.3"/><circle cx="14" cy="26.8" r="2.3"/></g><circle cx="15.6" cy="16.2" r="3.4" fill="${dot}"/></svg>`;
 
 const VERSION='0.1 · пилот';
-let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false,tenders:[],eis:null,eisErr:null,tq:'',tsearch:'',tview:'eis',schedule:null};
+let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false,tenders:[],eis:null,eisErr:null,tq:'',tsearch:'',tview:'eis',schedule:null,id:null,dtab:'id'};
 
 /* ═══ Сохранение: база страницы (общая для всех, кто открыл ссылку) + запас в браузере ═══ */
 let DB=null, CHANGELOG=null;
-const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page','tenders','schedule'];
+const SAVE_KEYS=['screen','step','company','team','objects','estimates','docs','telegram','page','tenders','schedule','id'];
 function snapshot(){const o={};SAVE_KEYS.forEach(k=>o[k]=S[k]);o.updatedAt=new Date().toISOString();o.version=VERSION;return o}
 async function persist(){if(!S.key)return;const data=snapshot();
   try{localStorage.setItem('datum:'+S.key,JSON.stringify(data));localStorage.setItem('datum:last',S.key)}catch(e){}
@@ -908,11 +908,144 @@ function pSchedule(){const o=S.objects[0];if(!o)return head('Производс�
   <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Журнал корректировок</div><div class="s">Кто и что менял — пригодится при спорах о сроках</div></div></div>
     <div style="padding:6px 20px 14px">${sc.log.slice(0,10).map(l=>`<div style="display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px"><span class="num" style="color:var(--ink-300);white-space:nowrap">${ruD(l.at)}</span><span>${esc(l.text)}</span></div>`).join('')||'<span style="color:var(--ink-300);font-size:13px">Правок пока не было</span>'}</div></div></div>`}
 
-function pDocs(){if(!S.docs.length)return head('Контроль','Документы','Хранилище пустое')+`<div class="page">${empty('Документы загружаются папкой','Выберите папку объекта: система определит тип каждого файла и привяжет к объекту. Дальше она следит за комплектностью.','Загрузить документы',"S.screen='wizard';S.step=4;render()",['pdf, docx, xlsx и фотографии','Тип определяется по названию, его можно поправить','Для каждого объекта система знает обязательный комплект'])}</div>`;
+/* ═══ Исполнительная документация: комплект по позициям сметы, АОСР с автозаполнением, выгрузка в Word ═══ */
+function idState(){if(!S.id)S.id={settings:null,docs:[],skip:{}};return S.id}
+function idSettings(){const id=idState();const o=S.objects[0]||{};const c=S.company||{};
+  if(!id.settings){id.settings={
+    object:(o.subject||'')+(o.customer?' — '+o.customer:'')+(o.address?', '+o.address:''),
+    builder:o.customer||'',contractor:(c.name||'')+(c.addr?', юридический адрес: '+c.addr:'')+(c.ogrn?'. ОГРН '+c.ogrn:'')+(c.inn?', ИНН '+c.inn:''),
+    designer:'—',repBuilder:'',repContractor:(c.head||'')+(c.name?' '+c.name:''),repOrder:'',repControl:'',repDesigner:'—',repOther:'',
+    contract:(o.number?'№ '+o.number:'')+(o.start?' от '+o.start:''),copies:'3'}}
+  return id.settings}
+function idSet(k,v){idSettings()[k]=v;render()}
+/* какие документы нужны по объекту: АОСР на каждую работу графика + общие журналы, ведомости, акты, реестр */
+function idRequired(){const st=(S.schedule&&S.schedule.stages)||[];const list=[];
+  st.forEach((x,i)=>list.push({key:'aosr:'+x.id,group:'АОСР',title:'АОСР — '+x.name,stage:x,order:i+1}));
+  const secs=new Set(st.map(x=>(x.section||'').toLowerCase()));
+  list.push({key:'journal',group:'Журналы',title:'Общий журнал работ (форма № 1026/пр)'});
+  list.push({key:'incontrol',group:'Журналы',title:'Журнал входного контроля материалов и изделий'});
+  list.push({key:'materials',group:'Материалы',title:'Сводная ведомость согласования материалов'});
+  list.push({key:'certs',group:'Материалы',title:'Реестр документов о качестве (сертификаты, паспорта)'});
+  if([...secs].some(s=>/электро/.test(s)))list.push({key:'eltech',group:'Акты',title:'Акт технической готовности электромонтажных работ'});
+  list.push({key:'equip',group:'Акты',title:'Ведомость смонтированного оборудования'});
+  list.push({key:'accept',group:'Акты',title:'Акт приёмки объекта в эксплуатацию'});
+  list.push({key:'registry',group:'Реестр',title:'Реестр исполнительной документации'});
+  return list}
+function idDoc(key){return idState().docs.find(d=>d.key===key)}
+function idStatus(req){const id=idState();if(id.skip[req.key])return 'skip';const d=idDoc(req.key);if(!d)return 'none';return d.status||'draft'}
+const ID_ST={none:['нет','bad'],draft:['черновик','warn'],ready:['подготовлен',''],signed:['подписан','ok'],skip:['не требуется','']};
+function idToggleSkip(key){const id=idState();id.skip[key]=!id.skip[key];render()}
+function idSetStatus(key,status){let d=idDoc(key);if(!d){const r=idRequired().find(x=>x.key===key);d={key,type:'doc',title:r?r.title:key,date:ISO(TODAY)};idState().docs.push(d)}d.status=status;render()}
+/* АОСР: создать/открыть с автозаполнением из контракта, сметы и графика */
+function idOpen(key){const id=idState();let d=idDoc(key);const req=idRequired().find(r=>r.key===key);if(!req)return;
+  if(!d){idSettings();const st=req.stage;const num=id.docs.filter(x=>x.key.startsWith('aosr:')).length+1;
+    const next=st?((S.schedule.stages[S.schedule.stages.indexOf(st)+1]||{}).name||''):'';
+    d={key,type:st?'АОСР':'doc',title:req.title,status:'draft',number:String(num),date:ISO(TODAY),
+      works:st?st.name+(st.qty?' — '+st.qty+' '+(st.unit||''):'')+(st.code?' (поз. '+st.code+' локального сметного расчёта)':''):'',
+      project:'—',materials:'',proofs:'Фотофиксация выполненных работ (фотоматериалы прилагаются); общий журнал работ',
+      start:st?(st.actStart||st.start):'',end:st?(st.actEnd||st.end):'',norms:'',next,
+      extra:'Работы выполнены в полном объёме, с надлежащим качеством, в соответствии с условиями контракта и сметной документацией. Замечаний нет.',
+      attach:'Фотофиксация выполненных работ на ____ л.; копии сертификатов соответствия (деклараций о соответствии) применённых материалов на ____ л.'};
+    id.docs.push(d)}
+  S.idEdit=key;render()}
+function idField(key,f,v){const d=idDoc(key);if(!d)return;d[f]=v;persist()}
+function idDelete(key){const id=idState();id.docs=id.docs.filter(d=>d.key!==key);S.idEdit=null;render()}
+function idClose(){S.idEdit=null;render()}
+/* ═══ Word: собираем .docx прямо в браузере ═══ */
+function docxXml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function dp(text,o={}){const rpr=`<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${o.b?'<w:b/>':''}${o.i?'<w:i/>':''}<w:sz w:val="${o.sz||24}"/></w:rPr>`;
+  const ppr=`<w:pPr>${o.jc?`<w:jc w:val="${o.jc}"/>`:''}<w:spacing w:after="${o.after==null?60:o.after}" w:line="240" w:lineRule="auto"/>${o.ind?`<w:ind w:left="${o.ind}"/>`:''}${o.border?'<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr>':''}</w:pPr>`;
+  const runs=String(text==null?'':text).split('\n').map((t,i)=>(i?'<w:r>'+rpr+'<w:br/></w:r>':'')+`<w:r>${rpr}<w:t xml:space="preserve">${docxXml(t)}</w:t></w:r>`).join('');
+  return `<w:p>${ppr}${runs}</w:p>`}
+function dcap(t){return dp(t,{i:true,sz:16,jc:'center',after:120})}
+function dline(v,cap){return dp(v||'—',{border:true,after:0})+(cap?dcap(cap):'')}
+function dtable(rows,widths){const tc=(t,w,b)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:tcBorders><w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/><w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/></w:tcBorders></w:tcPr>${dp(t,{sz:20,b,after:0})}</w:tc>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a,b)=>a+b,0)}" w:type="dxa"/></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.map((r,ri)=>`<w:tr>${r.map((c,ci)=>tc(c,widths[ci],ri===0)).join('')}</w:tr>`).join('')}</w:tbl>`}
+async function docxBlob(bodyXml){if(!window.JSZip)throw new Error('Модуль Word ещё загружается — подождите пару секунд');const z=new JSZip();
+  z.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  z.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  z.file('word/document.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${bodyXml}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1418" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`);
+  const u8=await z.generateAsync({type:'uint8array'});return new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})}
+function saveBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},800)}
+const ruLong=iso=>{const d=fromISO(iso);return d?`«${String(d.getDate()).padStart(2,'0')}» ${d.toLocaleDateString('ru-RU',{month:'long'})} ${d.getFullYear()} г.`:'«____» ______________ 20___ г.'};
+const CAP_ORG='(фамилия, имя, отчество, адрес места жительства, ОРГНИП, ИНН индивидуального предпринимателя, наименование, ОГРН, ИНН, место нахождения юридического лица, телефон/факс)';
+const CAP_REP='(должность, фамилия, инициалы, реквизиты распорядительного документа, подтверждающего полномочия)';
+function aosrXml(d){const s=idSettings();const rep=(label,v,cap)=>dp(label,{sz:20,after:0})+dline(v,cap||CAP_REP);const contr=s.repContractor+(s.repOrder?', '+s.repOrder:'');
+  return [
+    dp('Объект капитального строительства',{sz:20,after:0}),dline(s.object,'(наименование проектной документации, почтовый или строительный адрес объекта капитального строительства)'),
+    dp('Застройщик (технический заказчик, эксплуатирующая организация или региональный оператор)',{sz:20,after:0}),dline(s.builder,CAP_ORG),
+    dp('Лицо, осуществляющее строительство',{sz:20,after:0}),dline(s.contractor,CAP_ORG),
+    dp('Лицо, осуществляющее подготовку проектной документации',{sz:20,after:0}),dline(s.designer,CAP_ORG),
+    dp('',{after:120}),dp('АКТ',{b:true,jc:'center',sz:28,after:0}),dp('освидетельствования скрытых работ',{jc:'center',after:0}),dp(`№ ${d.number}          ${ruLong(d.date)}`,{jc:'center',after:0}),dcap('(дата составления акта)'),
+    rep('Представитель застройщика (технического заказчика, эксплуатирующей организации или регионального оператора) по вопросам строительного контроля',s.repBuilder,'(должность, фамилия, инициалы, идентификационный номер в национальном реестре специалистов, реквизиты распорядительного документа, подтверждающего полномочия)'),
+    rep('Представитель лица, осуществляющего строительство',contr),
+    rep('Представитель лица, осуществляющего строительство, по вопросам строительного контроля (специалист по организации строительства)',contr),
+    rep('Представитель лица, осуществляющего подготовку проектной документации',s.repDesigner),
+    rep('Представитель лица, выполнившего работы, подлежащие освидетельствованию',contr),
+    rep('а также иные представители лиц, участвующих в освидетельствовании',s.repOther||s.repControl,'(должность с указанием наименования организации, фамилия, инициалы, реквизиты распорядительного документа)'),
+    dp('произвели осмотр работ, выполненных',{sz:20,after:0}),dline((S.company||{}).name||'','(наименование лица, выполнившего работы, подлежащие освидетельствованию)'),
+    dp('и составили настоящий акт о нижеследующем:',{after:120}),
+    dp('1. К освидетельствованию предъявлены следующие работы: '+(d.works||''),{after:0}),dcap('(наименование скрытых работ)'),
+    dp('2. Работы выполнены по проектной документации: '+(d.project||'—'),{after:0}),dcap('(номер, другие реквизиты чертежа, наименование проектной и/или рабочей документации, сведения о лицах, осуществляющих подготовку раздела проектной и/или рабочей документации)'),
+    dp('3. При выполнении работ применены: '+(d.materials||'—'),{after:0}),dcap('(наименование строительных материалов (изделий), реквизиты сертификатов и/или других документов, подтверждающих их качество и безопасность)'),
+    dp('4. Предъявлены документы, подтверждающие соответствие работ предъявляемым требованиям: '+(d.proofs||'—'),{after:0}),dcap('(исполнительные схемы и чертежи, результаты экспертиз, обследований, лабораторных и иных испытаний выполненных работ, проведенных в процессе строительного контроля)'),
+    dp('5. Даты:',{after:0}),dp('начала работ '+ruD(d.start),{ind:720,after:0}),dp('окончания работ '+ruD(d.end),{ind:720}),
+    dp('6. Работы выполнены в соответствии с: '+(d.norms||'—'),{after:0}),dcap('(наименования и структурные единицы технических регламентов, иных нормативных правовых актов, разделы проектной и/или рабочей документации)'),
+    dp('7. Разрешается производство последующих работ: '+(d.next||'—'),{after:0}),dcap('(наименование работ, конструкций, участков сетей инженерно-технического обеспечения)'),
+    dp('Дополнительные сведения',{b:true,after:0}),dp(d.extra||'—'),
+    dp(`Акт составлен в ${s.copies||'3'} экземплярах.`),dp('Приложения:',{b:true,after:0}),dp(d.attach||'—',{after:0}),dcap('(исполнительные схемы и чертежи, результаты экспертиз, обследований, лабораторных и иных испытаний)'),
+    dp('Подписи:',{b:true,after:120}),
+    ...[['Представитель застройщика (технического заказчика, эксплуатирующей организации или регионального оператора) по вопросам строительного контроля',s.repBuilder],['Представитель лица, осуществляющего строительство',s.repContractor],['Представитель лица, осуществляющего строительство, по вопросам строительного контроля (специалист по организации строительства)',s.repContractor],['Представитель лица, осуществляющего подготовку проектной документации',s.repDesigner],['Представитель лица, выполнившего работы, подлежащие освидетельствованию',s.repContractor],['Представители иных лиц',s.repOther||s.repControl]].flatMap(([l,v])=>[dp(l,{sz:20,after:0}),dp((v||'—')+' _______________',{border:true,after:0}),dcap('(должность, фамилия, инициалы, подпись)')])
+  ].join('')}
+function registryXml(){const s=idSettings();const c=S.company||{};const id=idState();const req=idRequired();let n=0;const rows=[['№ п/п','Наименование исполнительной документации','Дата','Кол-во экз.']];
+  [['АОСР','1. Акты освидетельствования скрытых работ'],['Материалы','2. Документы о качестве применённых материалов'],['Журналы','3. Журналы производства работ'],['Акты','4. Акты и ведомости']].forEach(([g,title])=>{const items=req.filter(r=>r.group===g&&!id.skip[r.key]);if(!items.length)return;rows.push([title,'','','']);
+    items.forEach(r=>{const d=idDoc(r.key);n++;rows.push([String(n),r.group==='АОСР'?`Акт освидетельствования скрытых работ № ${d?d.number:'__'}. ${r.stage.name}`:r.title,d&&d.date?ruD(d.date):'__________',r.group==='АОСР'?(s.copies||'3'):'1'])})});
+  return [dp('РЕЕСТР',{b:true,jc:'center',sz:28,after:0}),dp('исполнительной документации',{jc:'center',after:200}),
+    dp(`${(c.region||'г. Санкт-Петербург')}                                        ${ruLong('')}`,{after:200}),
+    dp('Объект: '+(s.object||'—')+'.'),dp('Государственный контракт: '+(s.contract||'—')+'.'),dp('Подрядчик: '+(c.name||'—')+'.',{after:200}),
+    dtable(rows,[800,6000,1500,1300]),dp('',{after:200}),
+    dp('Исполнительная документация в полном объёме сформирована и передаётся заказчику в составе настоящего реестра.'),
+    dp('Исполнительную документацию составил и проверил:',{after:200}),dp(c.head||'',{after:0}),dp('______________ / ______________',{after:0}),dcap('(подпись) (расшифровка подписи)')].join('')}
+async function idDownload(key){try{let xml,name;if(key==='registry'){xml=registryXml();name=`Реестр ИД ${(S.objects[0]||{}).code||''}.docx`}else{const d=idDoc(key);if(!d)return;xml=aosrXml(d);name=`АОСР № ${d.number}. ${(d.works||'').split(' — ')[0].slice(0,60)}.docx`;if(d.status==='draft')d.status='ready'}
+    saveBlob(await docxBlob(xml),name);render();toast('Файл Word сохранён — откройте, проверьте и распечатайте')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+async function idDownloadAll(){const docs=idState().docs.filter(d=>d.type==='АОСР').sort((a,b)=>+a.number-+b.number);if(!docs.length){toast('Сначала составьте хотя бы один АОСР');return}
+  try{const xml=docs.map((d,i)=>aosrXml(d)+(i<docs.length-1?'<w:p><w:r><w:br w:type="page"/></w:r></w:p>':'')).join('');saveBlob(await docxBlob(xml),`АОСР № ${docs[0].number}–${docs[docs.length-1].number} ${(S.objects[0]||{}).code||''} (одним файлом на печать).docx`);toast(`Собрано ${docs.length} АОСР одним файлом`)}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+/* ═══ Экран ═══ */
+function idView(){const o=S.objects[0];if(!o)return empty('Исполнительная документация появится вместе с объектом','Загрузите контракт и смету — система сама составит список нужных актов и журналов и заполнит их реквизитами.','Завести объект',"S.screen='wizard';S.step=2;render()");
+  ensureSchedule();const s=idSettings();const id=idState();const req=idRequired();
+  const cnt={};req.forEach(r=>{const st=idStatus(r);cnt[st]=(cnt[st]||0)+1});const need=req.filter(r=>idStatus(r)!=='skip').length;const done=req.filter(r=>['ready','signed'].includes(idStatus(r))).length;
+  if(S.idEdit){const d=idDoc(S.idEdit);const r=req.find(x=>x.key===S.idEdit);if(d&&r){
+    const F=(f,l,rows)=>`<div class="field"><span class="eyebrow">${l}</span>${rows?`<textarea rows="${rows}" onchange="idField('${d.key}','${f}',this.value)" style="font-size:13.5px;line-height:1.5;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font-family:inherit;width:100%;box-sizing:border-box">${esc(d[f]||'')}</textarea>`:`<input value="${esc(d[f]||'')}" onchange="idField('${d.key}','${f}',this.value)">`}</div>`;
+    return `<div class="box rise"><div class="box-h"><div><div class="t">Акт освидетельствования скрытых работ № ${esc(d.number)}</div><div class="s">Реквизиты подставлены из контракта, сметы и графика. Проверьте и скачайте Word</div></div>
+      <div style="display:flex;gap:8px"><button class="btn sm" onclick="idClose()">← К списку</button><button class="btn pri sm" onclick="idDownload('${d.key}')">Скачать Word</button></div></div>
+      <div style="padding:18px 20px;display:grid;gap:14px;max-width:920px">
+      <div style="display:grid;grid-template-columns:120px 180px 1fr;gap:12px">${F('number','№ акта')}<div class="field"><span class="eyebrow">Дата акта</span><input type="date" value="${d.date}" onchange="idField('${d.key}','date',this.value)"></div><div class="field"><span class="eyebrow">Статус</span><select onchange="idSetStatus('${d.key}',this.value)">${['draft','ready','signed'].map(k=>`<option value="${k}"${d.status===k?' selected':''}>${ID_ST[k][0]}</option>`).join('')}</select></div></div>
+      ${F('works','1. К освидетельствованию предъявлены работы',3)}${F('project','2. Проектная документация (номер, листы) — «—», если работы по смете без проекта')}${F('materials','3. Применённые материалы и реквизиты сертификатов',3)}${F('proofs','4. Документы, подтверждающие соответствие (схемы, фото, испытания)',2)}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><span class="eyebrow">5. Начало работ</span><input type="date" value="${d.start}" onchange="idField('${d.key}','start',this.value)"></div><div class="field"><span class="eyebrow">Окончание работ</span><input type="date" value="${d.end}" onchange="idField('${d.key}','end',this.value)"></div></div>
+      ${F('norms','6. Работы выполнены в соответствии с (СП, ГОСТ, разделы проекта)')}${F('next','7. Разрешается производство последующих работ')}${F('extra','Дополнительные сведения',2)}${F('attach','Приложения',2)}
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><span style="font-size:12px;color:var(--ink-500)">Форма акта — как в ваших действующих АОСР. Нормативные ссылки в п. 6 проверяет ответственный специалист.</span><button class="btn sm ghost" style="color:var(--danger)" onclick="if(confirm('Удалить этот акт?'))idDelete('${d.key}')">Удалить акт</button></div></div></div>`}}
+  const setRow=(k,l,ph)=>`<div class="row3"><span class="eyebrow">${l}</span><input value="${esc(s[k]||'')}" placeholder="${ph||''}" onchange="idSet('${k}',this.value)"><span></span></div>`;
+  const statusSel=(r,st)=>`<select onchange="idSetStatus('${r.key}',this.value)" style="height:30px;font-size:12.5px"><option value="none"${st==='none'?' selected':''}>нет</option><option value="draft"${st==='draft'?' selected':''}>черновик</option><option value="ready"${st==='ready'?' selected':''}>подготовлен</option><option value="signed"${st==='signed'?' selected':''}>подписан</option></select>`;
+  return `<div class="grid g4">${stat('Документов в комплекте',need,'<span class="chip">по смете и графику</span>')}${stat('Готово',done,done===need?'<span class="chip ok">комплект закрыт</span>':`<span class="chip warn">осталось ${need-done}</span>`)}${stat('АОСР',req.filter(r=>r.group==='АОСР'&&idStatus(r)!=='skip').length,'<span class="chip">по одному на работу</span>')}${stat('Не требуется',cnt.skip||0,'<span class="chip">отмечено вручную</span>')}</div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Реквизиты для актов</div><div class="s">Заполняются один раз — подставляются во все АОСР и реестр</div></div><button class="btn sm" onclick="S.idSet=!S.idSet;render()">${S.idSet?'Свернуть':'Заполнить'}</button></div>
+    ${S.idSet?`<div style="padding:14px 20px;display:grid;gap:8px">${setRow('object','Объект','наименование работ — заказчик, адрес')}${setRow('builder','Застройщик (заказчик)','наименование, ОГРН, ИНН, адрес')}${setRow('contractor','Лицо, осуществляющее строительство','ваша компания: наименование, адрес, ОГРН, ИНН')}${setRow('designer','Проектировщик','«—», если проекта нет')}${setRow('repBuilder','Представитель заказчика','должность, ФИО, приказ')}${setRow('repContractor','Представитель подрядчика','должность, ФИО')}${setRow('repOrder','Приказ о назначении','№ и дата приказа')}${setRow('repControl','Строительный контроль','организация, должность, ФИО')}${setRow('repOther','Иные представители','')}${setRow('contract','Контракт','№ и дата')}${setRow('copies','Экземпляров акта','3')}</div>`:''}</div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Комплект исполнительной документации</div><div class="s">Список составлен по позициям сметы и графику. АОСР — на каждую работу; лишние отметьте «не требуется»</div></div>
+    <div style="display:flex;gap:8px"><button class="btn sm" onclick="idDownloadAll()">Все АОСР одним файлом</button><button class="btn pri sm" onclick="idDownload('registry')">Реестр ИД в Word</button></div></div>
+    <div style="overflow-x:auto"><table><thead><tr><th style="width:30px">№</th><th>документ</th><th>работы по графику</th><th>статус</th><th style="text-align:right">действие</th></tr></thead><tbody>
+    ${['АОСР','Журналы','Материалы','Акты','Реестр'].map(g=>{const items=req.filter(r=>r.group===g);if(!items.length)return '';return `<tr><td colspan="5" style="background:var(--surface);font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 12px">${g==='АОСР'?'АКТЫ ОСВИДЕТЕЛЬСТВОВАНИЯ СКРЫТЫХ РАБОТ':g.toUpperCase()}</td></tr>`+items.map(r=>{const st=idStatus(r);const d=idDoc(r.key);const [lbl,tone]=ID_ST[st];const skip=st==='skip';
+      return `<tr style="${skip?'opacity:.5':''}"><td class="num" style="color:var(--ink-300);font-size:12px">${r.order||''}</td><td style="font-size:13.5px;font-weight:600">${r.group==='АОСР'&&d?'АОСР № '+esc(d.number)+' — ':''}${esc(r.group==='АОСР'?r.stage.name:r.title)}</td><td style="font-size:12.5px;color:var(--ink-500);white-space:nowrap">${r.stage?ruD(r.stage.actStart||r.stage.start)+' — '+ruD(r.stage.actEnd||r.stage.end)+(r.stage.actEnd?' · выполнена':r.stage.actStart?' · в работе':' · план'):'—'}</td><td><span class="chip ${tone}">${lbl}</span></td><td style="text-align:right;white-space:nowrap">${skip?`<button class="btn sm ghost" onclick="idToggleSkip('${r.key}')">Вернуть</button>`:r.group==='АОСР'?`<button class="btn sm ${d?'':'pri'}" onclick="idOpen('${r.key}')">${d?'Открыть':'Составить'}</button> ${d?`<button class="btn sm" onclick="idDownload('${r.key}')">Word</button> `:''}<button class="btn sm ghost" onclick="idToggleSkip('${r.key}')" title="Не скрытая работа — акт не нужен">не требуется</button>`:r.key==='registry'?`<button class="btn sm pri" onclick="idDownload('registry')">Word</button>`:`${statusSel(r,st)} <button class="btn sm ghost" onclick="idToggleSkip('${r.key}')">не требуется</button>`}</td></tr>`}).join('')}).join('')}
+    </tbody></table></div></div>`}
+
+function pDocs(){const tabs=[['id','Исполнительная документация'],['files','Хранилище файлов']];const t=S.dtab||'id';
+  const tabBar=`<div style="display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px">${tabs.map(([k,l])=>`<button onclick="S.dtab='${k}';S.idEdit=null;render()" style="padding:10px 14px;font-size:14px;font-weight:${t===k?700:500};color:${t===k?'var(--ink)':'var(--ink-500)'};border-bottom:2px solid ${t===k?'var(--o500)':'transparent'};margin-bottom:-1px">${l}${k==='files'&&S.docs.length?` <span class="eyebrow" style="margin-left:6px">${S.docs.length}</span>`:''}</button>`).join('')}</div>`;
+  if(t==='id'){const o=S.objects[0];const req=o?idRequired():[];const need=req.filter(r=>idStatus(r)!=='skip').length,done=req.filter(r=>['ready','signed'].includes(idStatus(r))).length;
+    return head('Контроль','Документы',o?`${esc(o.code)} · исполнительная документация: ${done} из ${need}`:'Исполнительная документация и хранилище',`<button class="btn sm" onclick="S.screen='wizard';S.step=4;render()">Загрузить файлы</button>`)+`<div class="page">${tabBar}${idView()}</div>`}
+  return pDocsFiles(tabBar)}
+function pDocsFiles(tabBar){if(!S.docs.length)return head('Контроль','Документы','Хранилище пустое')+`<div class="page">${tabBar}${empty('Документы загружаются папкой','Выберите папку объекта: система определит тип каждого файла и привяжет к объекту. Дальше она следит за комплектностью.','Загрузить документы',"S.screen='wizard';S.step=4;render()",['pdf, docx, xlsx и фотографии','Тип определяется по названию, его можно поправить','Для каждого объекта система знает обязательный комплект'])}</div>`;
   const kinds={};S.docs.forEach(d=>kinds[d.kind]=(kinds[d.kind]||0)+1);
   const need=['Контракт','Смета и объёмы','План работ','Акт','Журнал','Исполнительная · АОСР','Сертификаты и паспорта','Приёмка · КС-2','Приёмка · КС-3','Фотофиксация'];
   const missing=need.filter(k=>!kinds[k]);
-  return head('Контроль','Документы',`${S.docs.length} документов · ${Object.keys(kinds).length} типов`,`<button class="btn pri sm" onclick="S.screen='wizard';S.step=4;render()">Загрузить ещё</button>`)+`<div class="page">
+  return head('Контроль','Документы',`${S.docs.length} документов · ${Object.keys(kinds).length} типов`,`<button class="btn pri sm" onclick="S.screen='wizard';S.step=4;render()">Загрузить ещё</button>`)+`<div class="page">${tabBar}
   <div class="box rise"><div style="overflow-x:auto;max-height:420px"><table><thead><tr><th>документ</th><th>тип</th><th>объект</th><th>дата</th></tr></thead><tbody>${S.docs.slice(0,100).map(d=>`<tr><td style="font-size:13.5px"><span style="color:var(--o500);margin-right:8px">▤</span>${esc(d.name)}</td><td><span class="chip ${d.sure?'':'warn'}">${esc(d.kind)}</span></td><td><span class="chip ok">${esc(d.obj)}</span></td><td class="num" style="color:var(--ink-500);font-size:13px">${d.date}</td></tr>`).join('')}</tbody></table></div></div>
   <div class="rec" style="margin-top:14px"><div class="eyebrow">Комплект по объекту: ${need.length-missing.length} из ${need.length}</div><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${need.map(k=>`<span class="chip ${kinds[k]?'ok':'bad'}">${k}</span>`).join('')}</div><p style="font-size:13px;color:var(--ink-700);margin-top:10px;line-height:1.55">${missing.length?'Недостающие типы за две недели до приёмки попадут в сигналы руководителю и в задачи ПТО.':'Комплект закрыт полностью.'}</p></div></div>`}
 
