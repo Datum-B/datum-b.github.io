@@ -466,12 +466,44 @@ function stepCompany(){const c=S.company;return `<div class="card rise">
     ${[['spec','Специализация','влияет на оценку закупок'],['region','Домашний регион','влияет на оценку закупок'],['cap','Потолок контракта','комфортная сумма'],['crew','Бригад в работе','учитывается в загрузке']].map(([k,l,h])=>`<div class="row3"><span class="eyebrow">${l}</span><input id="${k}" value="${esc(c[k]||'')}" placeholder="${k==='spec'?'ремонт, кровля, сети':k==='region'?'город или область':k==='cap'?'например 25 000 000 ₽':'например 8'}"><span class="chip brand">${h}</span></div>`).join('')}
   </div>`:''}
   ${nav(false,c?'saveCompany()':'lookupInn()',c?'Сохранить и дальше':'Продолжить')}</div>`}
-function lookupInn(){const inn=((document.getElementById('inn')||{}).value||'').replace(/\D/g,'');
+/* ═══ Автозаполнение по ИНН: ЕГРЮЛ через DaData (ключ лежит в data/config.json) ═══ */
+let CFG=null;
+async function loadCfg(){if(CFG)return CFG;try{const r=await fetch('data/config.json?'+Date.now(),{cache:'no-store'});CFG=r.ok?await r.json():{}}catch(e){CFG={}}return CFG}
+async function registryLookup(inn){
+  const cfg=await loadCfg();if(!cfg.dadataToken)return {status:'nokey'};
+  try{const r=await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party',{method:'POST',
+      headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Token '+cfg.dadataToken},body:JSON.stringify({query:inn,branch_type:'MAIN'})});
+    if(r.status===403){return {status:'badkey'}}
+    if(!r.ok)return {status:'error',message:'HTTP '+r.status};
+    const j=await r.json();const it=(j.suggestions||[])[0];if(!it)return {status:'notfound'};
+    const d=it.data||{};const addr=d.address||{};const ad=addr.data||{};const mg=d.management||{};
+    const taxMap={USN:'УСН',ENVD:'ЕНВД',ESHN:'ЕСХН',PSN:'Патент'};
+    const tax=(d.finance&&d.finance.tax_system)?(taxMap[d.finance.tax_system]||d.finance.tax_system):'';
+    return {status:'ok',company:{inn,fromRegistry:true,
+      name:(d.name&&(d.name.short_with_opf||d.name.full_with_opf))||it.value||'',
+      ogrn:d.ogrn||'',kpp:d.kpp||'',
+      addr:addr.unrestricted_value||addr.value||'',
+      head:[mg.post,mg.name].filter(Boolean).join(' '),
+      tax:tax,okved:d.okved||'',state:(d.state&&d.state.status)||'',
+      region:ad.region_with_type||ad.city||'',registered:d.state&&d.state.registration_date?new Date(d.state.registration_date).toLocaleDateString('ru-RU'):''}}}
+  catch(e){return {status:'error',message:e.message||String(e)}}
+}
+async function lookupInn(){const inn=((document.getElementById('inn')||{}).value||'').replace(/\D/g,'');
   if(inn.length<10){toast('ИНН — 10 или 12 цифр');return}
   if(!S.key)S.key=inn;try{localStorage.setItem('datum:last',S.key)}catch(e){}
-  if(inn==='7817145422'){busy('Подставляем реквизиты…');setTimeout(()=>{S.company={inn,fromRegistry:true,name:'ООО «СК ГОРИЗОНТ-А»',ogrn:'1257800032995',kpp:'781701001',addr:'196624, Санкт-Петербург, пос. Шушары, 2-й Бадаевский проезд, д. 3, корп. 1, лит. А, офис 312',head:'Генеральный директор Аракелян Мисак Айказович',tax:'УСН 15 % — НДС не облагается',spec:'ремонт, отделочные работы, кровля, инженерные сети',region:'Санкт-Петербург',cap:'25 000 000 ₽',crew:'8'};done()},700);return}
-  S.company=Object.assign({inn,fromRegistry:false,name:'',ogrn:'',kpp:'',addr:'',head:'',tax:'',spec:'',region:'',cap:'',crew:''},S.company||{},{inn});render();
-  toast('Заполните реквизиты один раз — дальше они сохранятся и подставятся сами')}
+  const keep=S.company||{};const own={spec:keep.spec||'',cap:keep.cap||'',crew:keep.crew||''};
+  if(inn==='7817145422'){busy('Подставляем реквизиты…');setTimeout(()=>{S.company=Object.assign({inn,fromRegistry:true,name:'ООО «СК ГОРИЗОНТ-А»',ogrn:'1257800032995',kpp:'781701001',addr:'196624, Санкт-Петербург, пос. Шушары, 2-й Бадаевский проезд, д. 3, корп. 1, лит. А, офис 312',head:'Генеральный директор Аракелян Мисак Айказович',tax:'УСН 15 % — НДС не облагается',spec:'ремонт, отделочные работы, кровля, инженерные сети',region:'Санкт-Петербург',cap:'25 000 000 ₽',crew:'8'},own.spec?own:{});done()},700);return}
+  busy('Ищем компанию в ЕГРЮЛ…');
+  const res=await registryLookup(inn);
+  const blank={inn,fromRegistry:false,name:'',ogrn:'',kpp:'',addr:'',head:'',tax:'',spec:'',region:'',cap:'',crew:''};
+  if(res.status==='ok'){S.company=Object.assign(blank,keep,res.company,own);done();
+    toast('Реквизиты подставлены из ЕГРЮЛ'+(res.company.state&&res.company.state!=='ACTIVE'?' — внимание: статус компании «'+res.company.state+'»':'')+'. Осталось заполнить профиль работ');return}
+  S.company=Object.assign(blank,keep,{inn});done();
+  const why={nokey:'Автозаполнение по ИНН ещё не подключено (нужен ключ ЕГРЮЛ-сервиса) — заполните реквизиты один раз вручную',
+    badkey:'Ключ ЕГРЮЛ-сервиса не принят — сообщите разработчику. Пока заполните реквизиты вручную',
+    notfound:'Компания с таким ИНН в ЕГРЮЛ не найдена — проверьте ИНН или заполните вручную',
+    error:'ЕГРЮЛ-сервис не ответил ('+(res.message||'')+') — заполните реквизиты вручную'};
+  toast(why[res.status]||why.error)}
 function saveCompany(){['name','ogrn','kpp','addr','head','tax','spec','region','cap','crew'].forEach(k=>{const e=document.getElementById(k);if(e)S.company[k]=e.value.trim()});
   if(!S.company.name){toast('Укажите наименование компании');return}
   S.step=1;render();toast('Компания сохранена')}
