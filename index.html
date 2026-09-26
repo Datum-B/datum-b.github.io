@@ -146,6 +146,40 @@ html.dark .toast{background:#F4F6F9;color:#0B0D10}
 @media(max-width:1100px){.g4{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:860px){.auth{grid-template-columns:1fr}.auth .left{display:none}.rail{display:none}.g2{grid-template-columns:1fr}.row3{grid-template-columns:1fr;gap:6px}.page{padding:16px}.topbar{padding:16px}}
 @media(max-width:600px){.g4{grid-template-columns:1fr}}
+
+/* график работ */
+.gt{display:grid;grid-template-columns:340px 1fr;font-size:13px}
+.gt .gl{padding:0 16px;border-right:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.gt .gr{position:relative}
+.gt .row{display:contents}
+.gt .row>div{height:40px;border-bottom:1px solid var(--line);box-sizing:border-box}
+.gt .sec>div{height:34px;background:var(--surface);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.gt .hd>div{height:44px;background:var(--bg);position:sticky;top:0;z-index:2}
+.gt .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gt .sub{font-size:11px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.gt .bar{position:absolute;height:10px;border-radius:5px}
+.gt .plan{top:9px;background:var(--ink-200)}
+.gt .plan.late{background:var(--danger-50);border:1px solid var(--danger)}
+.gt .fact{top:22px;background:var(--o500)}
+.gt .fact.open{background:var(--o300)}
+.gt .secbar{top:12px;height:10px;background:var(--ink-300);opacity:.35}
+.gt .tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--line)}
+.gt .today{position:absolute;top:0;bottom:0;border-left:2px solid var(--o600);z-index:1}
+.gt .cend{position:absolute;top:0;bottom:0;border-left:2px dashed var(--danger);z-index:1}
+.gt .lbl{position:absolute;top:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:var(--ink-500);white-space:nowrap}
+.gt .mon{position:absolute;top:24px;font-size:11px;color:var(--ink-500);white-space:nowrap}
+.gtl{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-500);padding:10px 20px;border-top:1px solid var(--line)}
+.gtl i{display:inline-block;width:18px;height:8px;border-radius:4px;vertical-align:middle;margin-right:6px}
+.st{display:grid;grid-template-columns:34px 1fr 190px 210px 210px 96px;align-items:center;font-size:13px}
+.st>div{padding:9px 10px;border-bottom:1px solid var(--line);min-width:0}
+.st .h>div{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-500);font-weight:700;padding:11px 10px}
+.st .r{display:contents}
+.st .s>div{background:var(--surface);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:8px 10px}
+.st .r.fin>div{opacity:.6}
+.st input[type=date]{width:100%;height:32px;font-size:13px}
+.st input[type=number]{width:62px;height:32px;font-size:13px}
+.st .ask{display:flex;gap:6px;align-items:center}
+@media(max-width:900px){.gt{grid-template-columns:200px 1fr}.st{grid-template-columns:30px 1fr 150px 170px 170px 80px}}
 </style>
 </head>
 <body>
@@ -709,9 +743,15 @@ function buildSchedule(o,fromEstimate){
     /* каждая позиция сметы — строка графика; длительность пропорциональна её доле в стоимости, разделы идут друг за другом */
     const items=e.items;const total=items.reduce((x,y)=>x+(y.sum||0),0)||1;
     const stages=[];const secs=[];items.forEach(it=>{const sec=it.section||'Работы';if(!secs.includes(sec))secs.push(sec)});
-    /* позиции идут по порядку сметы (раздел за разделом); место на календаре — по доле в стоимости, минимум один день */
-    let cum=0;secs.forEach(sec=>{items.filter(it=>(it.section||'Работы')===sec).forEach(it=>{const st=Math.min(days,Math.round(days*cum/total));cum+=(it.sum||0);const en=Math.max(st,Math.min(days,Math.round(days*cum/total)-1));
-      stages.push({id:'p'+(stages.length+1),section:sec,code:it.code||'',name:it.name,unit:it.unit||'',qty:it.qty,sum:it.sum||0,start:day(st),end:day(en),done:0,note:''})})});
+    /* раздел за разделом; внутри раздела работы идут каскадом с перехлёстом — как на реальной стройке.
+       Длительность — по доле в стоимости, но не меньше 3 дней; последняя работа раздела заканчивает раздел */
+    let cursor=0;secs.forEach((sec,si)=>{const its=items.filter(it=>(it.section||'Работы')===sec);const secSum=its.reduce((x,y)=>x+(y.sum||0),0);
+      let secDays=Math.max(4,Math.round(days*secSum/total));if(si===secs.length-1)secDays=Math.max(4,days-cursor);secDays=Math.min(secDays,Math.max(4,days-cursor));
+      const secStart=cursor,secEnd=Math.min(days,secStart+secDays-1);const n=its.length;
+      its.forEach((it,k)=>{const dur=Math.max(3,Math.min(secDays,Math.round(secDays*(it.sum||0)/(secSum||1)*1.6)));
+        const st=n===1?secStart:secStart+Math.round(k*(secDays-dur)/Math.max(1,n-1));const en=Math.min(secEnd,st+dur-1);
+        stages.push({id:'p'+(stages.length+1),section:sec,code:it.code||'',name:it.name,unit:it.unit||'',qty:it.qty,sum:it.sum||0,start:day(Math.max(0,st)),end:day(Math.max(st,en)),done:0,note:''})});
+      cursor=secEnd+1});
     /* последний этап — до конца контракта */
     if(stages.length)stages[stages.length-1].end=day(days);
     return {obj:o.code||'',source:'estimate',contractEnd:ISO(b),stages,log:[{at:ISO(TODAY),text:`График построен из сметы «${e.file}»: ${stages.length} ${plural(stages.length,'позиция','позиции','позиций')} в ${secs.length} ${plural(secs.length,'разделе','разделах','разделах')}, срок ${o.start||''} — ${o.end||''}`}]};
@@ -739,7 +779,7 @@ function schedUpd(id,field,value){const sc=S.schedule;const st=sc.stages.find(x=
 function schedFact(id,field,value){const sc=S.schedule;const st=sc.stages.find(x=>x.id===id);if(!st)return;
   if(value==='today')value=ISO(TODAY);if(value==='')value=null;
   if(value&&!fromISO(value)){return}
-  const old=st[field]||null;if(old===value)return;st[field]=value;
+  S.schedAsk=null;const old=st[field]||null;if(old===value){render();return}st[field]=value;
   if(field==='actEnd'&&value){st.done=100;if(!st.actStart)st.actStart=st.start}
   if(field==='actStart'&&value&&st.done===0)st.done=5;
   if(field==='actEnd'&&!value&&st.done===100)st.done=90;
@@ -766,54 +806,60 @@ function schedShift(){const n=parseInt((document.getElementById('sh_days')||{}).
   S.schedule.stages.forEach(st=>{if(st.done>=100)return;st.start=ISO(new Date(fromISO(st.start).getTime()+n*864e5));st.end=ISO(new Date(fromISO(st.end).getTime()+n*864e5))});
   schedLog(`Все незавершённые этапы сдвинуты на ${n>0?'+':''}${n} дн.`);render();toast('График сдвинут')}
 function schedReset(){const e=S.estimates[0];if(!confirm(e?'Перестроить график из позиций сметы? Ваши правки будут потеряны.':'Перестроить график из срока контракта? Ваши правки будут потеряны.'))return;const o=S.objects[0];S.schedule=buildSchedule(o,!!e);render()}
-function pSchedule(){const o=S.objects[0];if(!o)return head('Производство','График работ','Появится вместе с объектом')+`<div class="page">${empty('График строится из контракта','Как только появится объект, система разложит срок на этапы и построит календарный график по дням. Дальше сроки правятся прямо в таблице.','Завести объект',"S.screen='wizard';S.step=2;render()")}</div>`;
+function pSchedule(){const o=S.objects[0];if(!o)return head('Производство','График работ','Появится вместе с объектом')+`<div class="page">${empty('График строится из контракта и сметы','Появится объект — система разложит срок контракта по разделам и позициям сметы. Дальше прораб отмечает факт, руководитель видит отставание.','Завести объект',"S.screen='wizard';S.step=2;render()")}</div>`;
   const sc=ensureSchedule();const st=sc.stages;
   const off=d=>d?Math.round((d-TODAY)/864e5):0;
-  const starts=st.map(x=>fromISO(x.start)).filter(Boolean),ends=st.map(x=>fromISO(x.actEnd||x.end)).filter(Boolean);
-  const s0=Math.max(-400,Math.min(...starts.map(off),0)-3),s1=Math.min(400,Math.max(...ends.map(off),0)+3);
-  const W=760,L=210,x=d=>L+((Math.max(s0,Math.min(s1,d))-s0)/(s1-s0||1))*(W-L-14);
-  const cEnd=fromISO(sc.contractEnd);const lastEnd=new Date(Math.max(...ends));const over=cEnd?Math.round((lastEnd-cEnd)/864e5):0;
-  const late=st.filter(x=>fromISO(x.end)<TODAY&&x.done<100);
-  const total=st.reduce((a,x)=>a+Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0);
-  const prog=Math.round(st.reduce((a,x)=>a+x.done*Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0)/total);
-  const bar=(x0,x1,y,h,fill,stroke)=>`<rect x="${x0.toFixed(1)}" y="${y}" width="${Math.max(2,x1-x0).toFixed(1)}" height="${h}" rx="4" fill="${fill}" ${stroke?`stroke="${stroke}"`:''}/>`;
+  const cEnd=fromISO(sc.contractEnd);
+  const allD=st.flatMap(x=>[fromISO(x.start),fromISO(x.end),fromISO(x.actStart),fromISO(x.actEnd)]).filter(Boolean).map(off);
+  const s0=Math.max(-400,Math.min(...allD,0,cEnd?off(cEnd):0)-4),s1=Math.min(400,Math.max(...allD,0,cEnd?off(cEnd):0)+6);
+  const pct=d=>((Math.max(s0,Math.min(s1,d))-s0)/(s1-s0||1)*100);
+  const lateOf=x=>fromISO(x.end)<TODAY&&x.done<100&&!x.actEnd;
   const sumAll=st.reduce((a,x)=>a+(x.sum||0),0),sumDone=st.reduce((a,x)=>a+(x.sum||0)*x.done/100,0);
+  const durAll=st.reduce((a,x)=>a+Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0);
+  const prog=sumAll?Math.round(sumDone/sumAll*100):Math.round(st.reduce((a,x)=>a+x.done*Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0)/durAll);
   const lagAll=Math.max(0,...st.filter(x=>!x.actEnd).map(lagOf));
+  const lastEnd=new Date(Math.max(...st.map(x=>fromISO(x.actEnd||x.end)).filter(Boolean)));const over=cEnd?Math.round((lastEnd-cEnd)/864e5):0;
+  const late=st.filter(lateOf);
   const secs=[];st.forEach(x=>{const k=x.section||'';if(!secs.includes(k))secs.push(k)});
-  return head('Производство','График работ',`${esc(o.code)} · ${st.length} ${plural(st.length,'позиция','позиции','позиций')}${secs.filter(Boolean).length?' · '+secs.filter(Boolean).length+' '+plural(secs.filter(Boolean).length,'раздел','раздела','разделов'):''} · выполнено ${prog}%${sumAll?' · освоено '+m(sumDone)+' из '+m(sumAll):''}${lagAll>0?' · <span style="color:var(--danger)">отставание '+lagAll+' дн.</span>':' · идём по плану'} · срок ${ruD(sc.contractEnd)}`,
-    `<button class="btn sm" onclick="schedReset()">${S.estimates[0]?'Перестроить из сметы':'Перестроить по контракту'}</button><button class="btn pri sm" onclick="schedAdd()">＋ Позиция</button>`)+`<div class="page">
-  ${S.estimates[0]&&sc.source!=='estimate'?`<div class="rec" style="margin-bottom:14px"><b>Есть смета «${esc(S.estimates[0].file)}» на ${S.estimates[0].items.length} позиций.</b> Сейчас график типовой. <button class="btn sm pri" style="margin-left:8px" onclick="schedReset()">Построить график по позициям сметы</button></div>`:''}
-  ${over>0?`<div class="rec" style="margin-bottom:14px;border-left-color:var(--danger);background:var(--danger-50)"><b>График выходит за срок контракта на ${over} ${plural(over,'день','дня','дней')}</b> — последний этап заканчивается ${ruD(ISO(lastEnd))}, контракт до ${ruD(sc.contractEnd)}. Это основание для неустойки; сожмите этапы или оформите допсоглашение о переносе срока.</div>`:''}
-  ${late.length?`<div class="rec" style="margin-bottom:14px;border-left-color:var(--warn);background:var(--warn-50)"><b>${late.length} ${plural(late.length,'этап просрочен','этапа просрочены','этапов просрочены')}:</b> ${late.map(x=>esc(x.name)+' (до '+ruD(x.end)+', выполнено '+x.done+'%)').join('; ')}. Поправьте сроки или отметьте выполнение.</div>`:''}
-  ${!sc.actStart?`<div class="rec" style="margin-bottom:14px"><div class="eyebrow">Первый вопрос</div><div style="font-size:15px;font-weight:600;margin-top:6px">Когда фактически начались работы на объекте?</div><div style="font-size:13px;color:var(--ink-700);margin-top:4px">По контракту — ${ruD(sc.stages[0].start)}. Если начали в другой день, план пересчитается от вашей даты.</div>
-    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input type="date" id="os_date" value="${ISO(TODAY)}" style="width:160px"><button class="btn pri" onclick="schedObjStart(document.getElementById('os_date').value)">Записать начало работ</button><button class="btn" onclick="schedObjStart('${sc.stages[0].start}')">Начали по плану, ${ruD(sc.stages[0].start)}</button></div></div>`:''}
-  ${(()=>{const soon=st.filter(x=>!x.actEnd&&x.done<100&&fromISO(x.start)<=new Date(TODAY.getTime()+3*864e5)).slice(0,8);if(!soon.length||!sc.actStart)return '';
-    return `<div class="box rise" style="margin-bottom:14px"><div class="box-h"><div><div class="t">Сейчас на объекте</div><div class="s">Выберите дату (по умолчанию сегодня) и нажмите «Начали» или «Закончили»</div></div></div>
-    <div style="padding:4px 20px 12px">${soon.map(x=>{const lag=lagOf(x);return `<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);flex-wrap:wrap"><div style="flex:1;min-width:220px"><div style="font-size:13.5px;font-weight:600">${esc(x.name).slice(0,70)}</div><div class="eyebrow" style="margin-top:3px;font-weight:600">план ${ruD(x.start)} — ${ruD(x.end)}${x.sum?' · '+m(x.sum):''}${x.actStart?' · начата '+ruD(x.actStart):''}</div></div>
-      ${lag>0?`<span class="chip ${lag>7?'bad':'warn'}">${x.actStart?'отставание':'не начата'} ${lag} дн.</span>`:x.actStart?'<span class="chip ok">в работе</span>':'<span class="chip">по плану</span>'}
-      <div style="display:flex;gap:6px;align-items:center"><input type="date" id="qd_${x.id}" value="${ISO(TODAY)}" style="width:150px" title="Когда">${x.actStart?`<button class="btn sm pri" onclick="schedFact('${x.id}','actEnd',document.getElementById('qd_${x.id}').value)">Закончили</button>`:`<button class="btn sm pri" onclick="schedFact('${x.id}','actStart',document.getElementById('qd_${x.id}').value)">Начали</button>`}</div></div>`}).join('')}</div></div>`})()}
-  <div class="box rise"><div class="box-h"><div><div class="t">Календарный график</div><div class="s">Серая полоса — план, охровая — факт (от фактического начала до окончания или до сегодня)</div></div></div>
-  ${(()=>{const rowsG=[];secs.forEach(sec=>{const its=st.filter(x=>(x.section||'')===sec);if(sec)rowsG.push({sec,its});its.forEach(x=>rowsG.push({it:x}))});const RH=30,SH=34;let y=14;const H=rowsG.reduce((a,r)=>a+(r.sec?SH:RH),0)+54;
-    const body=rowsG.map(r=>{if(r.sec){const f=Math.min(...r.its.map(x=>off(fromISO(x.start)))),t=Math.max(...r.its.map(x=>off(fromISO(x.end))))+1;const sSum=r.its.reduce((a,x)=>a+(x.sum||0),0);const sDone=sSum?Math.round(r.its.reduce((a,x)=>a+(x.sum||0)*x.done/100,0)/sSum*100):0;const yy=y;y+=SH;
-        return `<rect x="0" y="${yy-4}" width="${W}" height="${SH-4}" fill="var(--surface)"/><text x="6" y="${yy+14}" font-size="11" fill="var(--ink)" font-weight="700" letter-spacing="1">${esc(r.sec).toUpperCase().slice(0,30)}</text><text x="${L-6}" y="${yy+14}" text-anchor="end" font-size="10" fill="var(--ink-500)">${sSum?m(sSum)+' · ':''}${sDone}%</text>${bar(x(f),x(t),yy+2,12,'var(--ink-200)')}${sDone>0?bar(x(f),x(f)+(x(t)-x(f))*sDone/100,yy+2,12,'var(--o600)'):''}`}
-      const n=r.it;const i=st.indexOf(n);const yy=y;y+=RH;const f=off(fromISO(n.start)),t=off(fromISO(n.end))+1;const isLate=fromISO(n.end)<TODAY&&n.done<100;
-      return `<text x="6" y="${yy+11}" font-size="11" fill="var(--ink-500)" font-weight="600">${i+1}</text><text x="26" y="${yy+11}" font-size="11.5" fill="var(--ink)">${esc(n.name).slice(0,30)}</text><text x="26" y="${yy+22}" font-size="9.5" fill="${isLate?'var(--danger)':'var(--ink-300)'}">${ruD(n.start)} — ${ruD(n.end)}${n.sum?' · '+m(n.sum):''} · ${n.done}%</text>${bar(x(f),x(t),yy+2,9,'var(--surface-2)',isLate?'var(--danger)':'var(--line)')}${n.actStart?bar(x(off(fromISO(n.actStart))),x(n.actEnd?off(fromISO(n.actEnd))+1:Math.max(off(fromISO(n.actStart))+1,1)),yy+12,9,n.actEnd?'var(--o600)':'var(--o300)'):n.done>0?bar(x(f),x(f)+(x(t)-x(f))*n.done/100,yy+12,9,'var(--o300)'):''}`}).join('');
-    return `<div style="padding:16px 20px;overflow-x:auto"><svg width="100%" viewBox="0 0 ${W} ${H}" style="display:block;min-width:640px">${body}<line x1="${x(0)}" x2="${x(0)}" y1="6" y2="${H-30}" stroke="var(--o500)" stroke-width="1.5"/><text x="${x(0)+6}" y="${H-12}" font-size="10" fill="var(--o700)" font-weight="700" letter-spacing="1.5">СЕГОДНЯ</text>${cEnd?`<line x1="${x(off(cEnd)+1)}" x2="${x(off(cEnd)+1)}" y1="6" y2="${H-30}" stroke="var(--danger)" stroke-width="1" stroke-dasharray="3 3"/><text x="${x(off(cEnd)+1)-4}" y="${H-12}" text-anchor="end" font-size="10" fill="var(--danger)" font-weight="700" letter-spacing="1.5">СРОК КОНТРАКТА</text>`:''}</svg></div></div>`})()}
-  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Позиции: план и факт</div><div class="s">Факт — кнопки «Начали» и «Готово» или дата. План правится по ✎. Всё попадает в журнал</div></div>
-    <div style="display:flex;gap:8px;align-items:center"><input id="sh_days" type="number" placeholder="дней" style="width:84px" title="На сколько дней сдвинуть незавершённые этапы (минус — назад)"><button class="btn sm" onclick="schedShift()">Сдвинуть незавершённые</button></div></div>
-  <div style="overflow-x:auto;max-height:640px"><table><thead><tr><th style="width:30px">№</th><th>работа</th><th style="text-align:right">по смете</th><th>план</th><th>факт начало</th><th>факт окончание</th><th>выполнено</th><th>отставание</th><th></th></tr></thead><tbody>
-  ${st.map((n,i)=>{const isLate=fromISO(n.end)<TODAY&&n.done<100;const lag=lagOf(n);const edit=S.schedEdit===n.id;const secRow=(n.section&&(i===0||st[i-1].section!==n.section))?`<tr><td colspan="9" style="background:var(--surface);font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 12px">${esc(n.section).toUpperCase()}</td></tr>`:'';return secRow+`<tr style="${n.actEnd?'opacity:.7':''}">
-    <td class="num" style="color:var(--ink-300);font-size:12px">${i+1}</td>
-    <td style="min-width:220px">${edit?`<input id="sn_${n.id}" value="${esc(n.name)}" onchange="schedUpd('${n.id}','name',this.value)" style="min-width:220px;font-weight:600">`:`<div style="font-size:13.5px;font-weight:600">${esc(n.name).slice(0,80)}</div>`}${n.code||n.qty?`<div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(n.code||'')}${n.qty?' · '+n.qty+' '+esc(n.unit||''):''}</div>`:''}${edit?`<input value="${esc(n.note||'')}" placeholder="заметка" onchange="schedUpd('${n.id}','note',this.value)" style="margin-top:6px;min-width:220px">`:n.note?`<div style="font-size:12px;color:var(--ink-500);margin-top:3px">${esc(n.note)}</div>`:''}</td>
-    <td class="num" style="text-align:right;white-space:nowrap">${n.sum?m(n.sum):'—'}</td>
-    <td style="white-space:nowrap">${edit?`<input type="date" value="${n.start}" onchange="schedUpd('${n.id}','start',this.value)" style="width:140px"><br><input type="date" value="${n.end}" onchange="schedUpd('${n.id}','end',this.value)" style="width:140px;margin-top:4px">`:`<span class="num" style="font-size:13px;${isLate?'color:var(--danger)':''}">${ruD(n.start)} — ${ruD(n.end)}</span><div class="eyebrow" style="margin-top:3px;font-weight:600">${off(fromISO(n.end))-off(fromISO(n.start))+1} дн.</div>`}</td>
-    <td style="white-space:nowrap"><div style="display:flex;gap:6px;align-items:center"><input type="date" id="fs_${n.id}" value="${n.actStart||ISO(TODAY)}" onchange="if('${n.actStart||''}')schedFact('${n.id}','actStart',this.value)" style="width:140px;${n.actStart?'border-color:var(--o300)':'color:var(--ink-300)'}">${n.actStart?'':`<button class="btn sm" onclick="schedFact('${n.id}','actStart',document.getElementById('fs_${n.id}').value)">Начали</button>`}</div></td>
-    <td style="white-space:nowrap"><div style="display:flex;gap:6px;align-items:center"><input type="date" id="fe_${n.id}" value="${n.actEnd||ISO(TODAY)}" onchange="if('${n.actEnd||''}')schedFact('${n.id}','actEnd',this.value)" style="width:140px;${n.actEnd?'border-color:var(--ok)':'color:var(--ink-300)'}">${n.actEnd?'':`<button class="btn sm" onclick="schedFact('${n.id}','actEnd',document.getElementById('fe_${n.id}').value)">Готово</button>`}</div></td>
-    <td><div style="display:flex;align-items:center;gap:6px"><input type="number" min="0" max="100" step="5" value="${n.done}" onchange="schedUpd('${n.id}','done',this.value)" style="width:64px">%</div></td>
-    <td style="white-space:nowrap">${n.actEnd?(lag>0?`<span class="chip warn">сдана на ${lag} дн. позже</span>`:'<span class="chip ok">в срок</span>'):lag>0?`<span class="chip ${lag>7?'bad':'warn'}">${n.actStart?'':'не начата · '}${lag} дн.</span>`:n.actStart?'<span class="chip ok">в работе</span>':'<span class="chip">по плану</span>'}</td>
-    <td style="white-space:nowrap;text-align:right"><button class="btn sm ghost" title="Править план" onclick="S.schedEdit=S.schedEdit==='${n.id}'?null:'${n.id}';render()">${edit?'Готово':'✎'}</button>${edit?`<button class="btn sm ghost" title="Выше" onclick="schedMove('${n.id}',-1)">↑</button><button class="btn sm ghost" title="Ниже" onclick="schedMove('${n.id}',1)">↓</button><button class="btn sm ghost" title="Удалить" onclick="schedDel('${n.id}')" style="color:var(--danger)">✕</button>`:''}</td></tr>`}).join('')}
-  </tbody></table></div></div>
-  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Журнал корректировок</div><div class="s">Кто и что менял — видно и руководителю, и заказчику при спорах о сроках</div></div></div>
+  /* шкала: недели и месяцы */
+  const ticks=[];for(let d=s0;d<=s1;d++){const dd=new Date(TODAY.getTime()+d*864e5);if(dd.getDay()===1)ticks.push({d,mon:false});if(dd.getDate()===1)ticks.push({d,mon:true,name:dd.toLocaleDateString('ru-RU',{month:'long',year:'numeric'})})}
+  const grid=`<div class="gt">
+    <div class="row hd"><div class="gl"><span class="eyebrow">работа · план · освоено</span></div><div class="gr">${ticks.filter(t=>!t.mon).map(t=>`<div class="tick" style="left:${pct(t.d).toFixed(2)}%"></div>`).join('')}${ticks.filter(t=>t.mon).map(t=>`<div class="tick" style="left:${pct(t.d).toFixed(2)}%;border-left-color:var(--ink-300)"></div><div class="mon" style="left:calc(${pct(t.d).toFixed(2)}% + 6px)">${t.name}</div>`).join('')}<div class="today" style="left:${pct(0).toFixed(2)}%"></div><div class="lbl" style="left:calc(${pct(0).toFixed(2)}% + 6px);color:var(--o700)">сегодня</div>${cEnd?`<div class="cend" style="left:${pct(off(cEnd)+1).toFixed(2)}%"></div><div class="lbl" style="right:calc(${(100-pct(off(cEnd)+1)).toFixed(2)}% + 6px);color:var(--danger)">срок контракта</div>`:''}</div></div>
+    ${secs.map(sec=>{const its=st.filter(x=>(x.section||'')===sec);const sSum=its.reduce((a,x)=>a+(x.sum||0),0);const sDone=sSum?Math.round(its.reduce((a,x)=>a+(x.sum||0)*x.done/100,0)/sSum*100):Math.round(its.reduce((a,x)=>a+x.done,0)/its.length);
+      const f=Math.min(...its.map(x=>off(fromISO(x.start)))),t=Math.max(...its.map(x=>off(fromISO(x.end))))+1;
+      const secRow=sec?`<div class="row sec"><div class="gl" style="flex-direction:row;justify-content:space-between;align-items:center"><span>${esc(sec)}</span><span style="font-weight:600;letter-spacing:0;text-transform:none;color:var(--ink-500)">${sSum?m(sSum)+' · ':''}${sDone}%</span></div><div class="gr">${ticks.map(tk=>`<div class="tick" style="left:${pct(tk.d).toFixed(2)}%"></div>`).join('')}<div class="bar secbar" style="left:${pct(f).toFixed(2)}%;width:${(pct(t)-pct(f)).toFixed(2)}%"></div><div class="today" style="left:${pct(0).toFixed(2)}%"></div>${cEnd?`<div class="cend" style="left:${pct(off(cEnd)+1).toFixed(2)}%"></div>`:''}</div></div>`:'';
+      return secRow+its.map(x=>{const i=st.indexOf(x);const f=off(fromISO(x.start)),t=off(fromISO(x.end))+1;const isLate=lateOf(x);const fa=x.actStart?off(fromISO(x.actStart)):null;const fe=x.actEnd?off(fromISO(x.actEnd))+1:(fa!=null?Math.max(fa+1,1):null);
+        return `<div class="row"><div class="gl"><div class="nm" title="${esc(x.name)}">${i+1}. ${esc(x.name)}</div><div class="sub">${ruD(x.start)} — ${ruD(x.end)}${x.sum?' · '+m(x.sum):''} · ${x.done}%${x.actStart?' · факт с '+ruD(x.actStart):''}</div></div><div class="gr">${ticks.map(tk=>`<div class="tick" style="left:${pct(tk.d).toFixed(2)}%"></div>`).join('')}<div class="bar plan ${isLate?'late':''}" style="left:${pct(f).toFixed(2)}%;width:${Math.max(.6,pct(t)-pct(f)).toFixed(2)}%" title="план ${ruD(x.start)} — ${ruD(x.end)}"></div>${fa!=null?`<div class="bar fact ${x.actEnd?'':'open'}" style="left:${pct(fa).toFixed(2)}%;width:${Math.max(.6,pct(fe)-pct(fa)).toFixed(2)}%" title="факт ${ruD(x.actStart)} — ${x.actEnd?ruD(x.actEnd):'в работе'}"></div>`:x.done>0?`<div class="bar fact open" style="left:${pct(f).toFixed(2)}%;width:${Math.max(.6,(pct(t)-pct(f))*x.done/100).toFixed(2)}%"></div>`:''}<div class="today" style="left:${pct(0).toFixed(2)}%"></div>${cEnd?`<div class="cend" style="left:${pct(off(cEnd)+1).toFixed(2)}%"></div>`:''}</div></div>`}).join('')}).join('')}
+  </div><div class="gtl"><span><i style="background:var(--ink-200)"></i>план</span><span><i style="background:var(--o500)"></i>факт (закрыта)</span><span><i style="background:var(--o300)"></i>факт (в работе)</span><span><i style="background:var(--danger-50);border:1px solid var(--danger)"></i>просрочена по плану</span></div>`;
+  const ask=S.schedAsk||{};
+  const factCell=(x,field)=>{const v=x[field];const other=field==='actStart'?'actEnd':'actStart';
+    if(ask.id===x.id&&ask.field===field)return `<div class="ask"><input type="date" id="ask_d" value="${ISO(TODAY)}" onkeydown="if(event.key==='Enter')schedFact('${x.id}','${field}',this.value)"><button class="btn sm pri" onclick="schedFact('${x.id}','${field}',document.getElementById('ask_d').value)">ОК</button><button class="btn sm ghost" onclick="S.schedAsk=null;render()">✕</button></div>`;
+    if(v)return `<input type="date" value="${v}" onchange="schedFact('${x.id}','${field}',this.value)" title="Поправить дату">`;
+    if(field==='actEnd'&&!x.actStart)return `<span style="color:var(--ink-300)">—</span>`;
+    return `<button class="btn sm" onclick="S.schedAsk={id:'${x.id}',field:'${field}'};render();setTimeout(()=>{const i=document.getElementById('ask_d');if(i)i.focus()},0)">${field==='actStart'?'Начали…':'Закончили…'}</button>`};
+  const table=`<div class="st"><div class="r h"><div>№</div><div>работа</div><div>план</div><div>факт начало</div><div>факт окончание</div><div>готово</div></div>
+    ${st.map((x,i)=>{const isLate=lateOf(x);const lag=lagOf(x);const edit=S.schedEdit===x.id;const secRow=(x.section&&(i===0||st[i-1].section!==x.section))?`<div class="r s"><div style="grid-column:1/-1">${esc(x.section)}</div></div>`:'';
+      const status=x.actEnd?(lag>0?`<span class="chip warn">+${lag} дн.</span>`:'<span class="chip ok">в срок</span>'):lag>0?`<span class="chip ${lag>7?'bad':'warn'}">${x.actStart?'':'не начата · '}${lag} дн.</span>`:x.actStart?'<span class="chip ok">в работе</span>':'';
+      return secRow+`<div class="r ${x.actEnd?'fin':''}">
+      <div class="num" style="color:var(--ink-300);font-size:12px">${i+1}</div>
+      <div>${edit?`<input value="${esc(x.name)}" onchange="schedUpd('${x.id}','name',this.value)" style="width:100%;font-weight:600"><div style="display:flex;gap:6px;margin-top:6px;align-items:center"><input type="date" value="${x.start}" onchange="schedUpd('${x.id}','start',this.value)" style="width:150px"><span style="color:var(--ink-300)">—</span><input type="date" value="${x.end}" onchange="schedUpd('${x.id}','end',this.value)" style="width:150px"><input value="${esc(x.note||'')}" placeholder="заметка" onchange="schedUpd('${x.id}','note',this.value)" style="flex:1"><button class="btn sm ghost" onclick="schedMove('${x.id}',-1)">↑</button><button class="btn sm ghost" onclick="schedMove('${x.id}',1)">↓</button><button class="btn sm ghost" style="color:var(--danger)" onclick="schedDel('${x.id}')">✕</button><button class="btn sm" onclick="S.schedEdit=null;render()">Готово</button></div>`:
+        `<div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</span>${status}<button class="btn sm ghost" title="Править план" onclick="S.schedEdit='${x.id}';render()" style="margin-left:auto;padding:2px 6px">✎</button></div><div class="sub" style="font-size:11.5px;color:var(--ink-500);margin-top:1px">${esc(x.code||'')}${x.qty?' · '+x.qty+' '+esc(x.unit||''):''}${x.sum?' · '+m(x.sum):''}${x.note?' · '+esc(x.note):''}</div>`}</div>
+      <div class="num" style="font-size:12.5px;${isLate?'color:var(--danger)':''}">${ruD(x.start)} — ${ruD(x.end)}<div style="font-size:11px;color:var(--ink-500)">${off(fromISO(x.end))-off(fromISO(x.start))+1} дн.</div></div>
+      <div>${factCell(x,'actStart')}</div>
+      <div>${factCell(x,'actEnd')}</div>
+      <div style="display:flex;align-items:center;gap:4px"><input type="number" min="0" max="100" step="10" value="${x.done}" onchange="schedUpd('${x.id}','done',this.value)">%</div></div>`}).join('')}</div>`;
+  return head('Производство','График работ',`${esc(o.code)} · ${st.length} ${plural(st.length,'позиция','позиции','позиций')} · выполнено ${prog}%${sumAll?' · освоено '+m(sumDone)+' из '+m(sumAll):''}${lagAll>0?' · <span style="color:var(--danger)">отставание '+lagAll+' дн.</span>':' · идём по плану'} · срок ${ruD(sc.contractEnd)}`,
+    `<button class="btn sm" onclick="schedReset()">${S.estimates[0]?'Перестроить из сметы':'Перестроить по контракту'}</button><button class="btn sm" onclick="schedAdd()">＋ Позиция</button>`)+`<div class="page">
+  ${!sc.actStart?`<div class="rec" style="margin-bottom:14px"><div style="font-size:15px;font-weight:600">Когда фактически начались работы на объекте?</div><div style="font-size:13px;color:var(--ink-700);margin-top:4px">По контракту — ${ruD(sc.stages[0].start)}. Если начали в другой день, план сдвинется от вашей даты.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap"><input type="date" id="os_date" value="${ISO(TODAY)}" style="width:160px"><button class="btn pri" onclick="schedObjStart(document.getElementById('os_date').value)">Записать</button><button class="btn" onclick="schedObjStart('${sc.stages[0].start}')">Начали по плану, ${ruD(sc.stages[0].start)}</button></div></div>`:
+    (over>0||late.length?`<div class="rec" style="margin-bottom:14px;border-left-color:${over>0?'var(--danger)':'var(--warn)'};background:${over>0?'var(--danger-50)':'var(--warn-50)'};font-size:13.5px">${over>0?`<b>График выходит за срок контракта на ${over} ${plural(over,'день','дня','дней')}</b> (последняя работа — ${ruD(ISO(lastEnd))}, контракт до ${ruD(sc.contractEnd)}). Это основание для неустойки: сожмите план или оформите допсоглашение. `:''}${late.length?`<b>${late.length} ${plural(late.length,'работа просрочена','работы просрочены','работ просрочено')}</b> — они помечены красным; отметьте факт или поправьте план.`:''}</div>`:'')}
+  ${S.estimates[0]&&sc.source!=='estimate'?`<div class="rec" style="margin-bottom:14px"><b>Есть смета «${esc(S.estimates[0].file)}» на ${S.estimates[0].items.length} позиций.</b> Сейчас график типовой. <button class="btn sm pri" style="margin-left:8px" onclick="schedReset()">Построить по позициям сметы</button></div>`:''}
+  <div class="box rise"><div class="box-h"><div><div class="t">Календарный график</div><div class="s">Серая полоса — план, охровая — факт. Разделы сметы идут друг за другом, работы внутри раздела — с перехлёстом</div></div></div>
+    <div style="overflow-x:auto">${grid}</div></div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Отметить факт</div><div class="s">«Начали…» / «Закончили…» — выберите дату и ОК. План правится по ✎</div></div>
+    <div style="display:flex;gap:8px;align-items:center"><input id="sh_days" type="number" placeholder="дней" style="width:84px" title="Сдвинуть незавершённые работы (минус — назад)"><button class="btn sm" onclick="schedShift()">Сдвинуть незавершённые</button></div></div>
+    <div style="overflow-x:auto">${table}</div></div>
+  <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Журнал корректировок</div><div class="s">Кто и что менял — пригодится при спорах о сроках</div></div></div>
     <div style="padding:6px 20px 14px">${sc.log.slice(0,10).map(l=>`<div style="display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px"><span class="num" style="color:var(--ink-300);white-space:nowrap">${ruD(l.at)}</span><span>${esc(l.text)}</span></div>`).join('')||'<span style="color:var(--ink-300);font-size:13px">Правок пока не было</span>'}</div></div></div>`}
 
 function pDocs(){if(!S.docs.length)return head('Контроль','Документы','Хранилище пустое')+`<div class="page">${empty('Документы загружаются папкой','Выберите папку объекта: система определит тип каждого файла и привяжет к объекту. Дальше она следит за комплектностью.','Загрузить документы',"S.screen='wizard';S.step=4;render()",['pdf, docx, xlsx и фотографии','Тип определяется по названию, его можно поправить','Для каждого объекта система знает обязательный комплект'])}</div>`;
