@@ -285,17 +285,21 @@ function parseLSR(rows){
   if(hdr<0)return null;
   const lastNum=r=>{for(let k=r.length-1;k>=0;k--){const n=toNum(r[k]);if(n!=null)return n}return null};
   const items=[],sections=[],extras=[];let cur=null,section='',subtotal=null,vat=null,vatNote='',grand=null,afterTotal=false;
+  const isHeader=r=>{const h=(r||[]).map(c=>String(c).toLowerCase());return h.some(c=>/обоснован/.test(c))&&h.some(c=>/наимен/.test(c))};
   for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const c0=String(r[0]||'').trim();const name=String(r[cN]||'').trim();
+    /* вторая таблица (другой лист: материалы, ресурсы) — не часть расчёта */
+    if(isHeader(r)&&items.length&&afterTotal)break;
+    if(isHeader(r)&&items.length&&/^(ИТОГО|Итого)/.test(String((rows[i-1]||[])[cN]||(rows[i-2]||[])[cN]||''))){break}
     const secM=c0.match(/^Раздел\s*(\d+)\.?\s*(.*)$/i);
     if(secM){section=(secM[2]||'').replace(/[<>]/g,'').trim()||('Раздел '+secM[1]);sections.push(section);cur=null;continue}
     if(r.length<=2&&c0&&toNum(c0)==null&&!/^(итого|всего|составил|проверил|\(|справочно)/i.test(c0)){section=c0;sections.push(section);continue}
-    if(/^\d+$/.test(c0)&&name&&toNum(name)==null){cur={num:+c0,section,code:String(r[1]||'').trim(),name:name.replace(/V=.*$/,'').replace(/\s+/g,' ').trim().slice(0,160),unit:String(r[cU]||'').trim()||'—',qty:toNum(r[cQ]),sum:lastNum(r)};items.push(cur);continue}
+    if(/^\d+$/.test(c0)&&name&&toNum(name)==null){if(afterTotal&&+c0===1&&items.length>1)break;cur={num:+c0,section,code:String(r[1]||'').trim(),name:name.replace(/V=.*$/,'').replace(/\s+/g,' ').trim().slice(0,160),unit:String(r[cU]||'').trim()||'—',qty:toNum(r[cQ]),sum:lastNum(r)};items.push(cur);continue}
     if(/^Всего по позиции/i.test(name)&&cur){const n=lastNum(r);if(n!=null)cur.sum=n;continue}
-    if(/^(ВСЕГО по смете|Итого по разделам)/i.test(name)){const n=lastNum(r);if(n!=null)subtotal=n;afterTotal=true;continue}
+    if(/^(ВСЕГО по смете|Итого по разделам|ИТОГО по позициям|ИТОГО без НДС)/i.test(name)){const n=lastNum(r);if(n!=null)subtotal=n;afterTotal=true;continue}
     if(!afterTotal)continue;
     if(/^НДС/i.test(name)){const n=lastNum(r);if(n!=null&&!/не облагается/i.test(name))vat=n;else vatNote=name.replace(/\s+/g,' ').slice(0,80);continue}
-    if(/^Итого/i.test(name)){const n=lastNum(r);if(n!=null)grand=n;continue}
-    if(/^(Прогнозный|Индекс|Коэффициент|Временн|Зимн|Непредвид|Лимитир|Прочие|Сметная прибыль|Накладные)/i.test(name)){const n=lastNum(r);if(n!=null&&n!==0&&!/^(Всего|в том числе)/i.test(name))extras.push({name:name.replace(/\s+/g,' ').slice(0,90),sum:n})}}
+    if(/^(Итого|ВСЕГО)/i.test(name)){const n=lastNum(r);if(n!=null)grand=n;continue}
+    if(/^(Прогнозный|Индекс|Коэффициент|Временн|Зимн|Непредвид|Лимитир)/i.test(name)){const n=lastNum(r);if(n!=null&&n!==0&&!/^(Всего|в том числе)/i.test(name))extras.push({name:name.replace(/\s+/g,' ').slice(0,90),sum:n})}}
   const good=items.filter(it=>it.sum!=null&&it.sum>0);if(good.length<2)return null;
   const posSum=good.reduce((a,b)=>a+b.sum,0);
   const extrasSum=extras.reduce((a,b)=>a+b.sum,0);
@@ -358,13 +362,15 @@ async function onObjectFiles(files){
     // смета: xlsx/docx с подходящим названием, иначе любой xlsx
     const smetaCands=[...files.filter(f=>/смет|лср|вор|ведомост/i.test(f.name)&&['xlsx','xls','xlsm','csv','docx'].includes(ext(f.name))),
                       ...files.filter(f=>['xlsx','xls','xlsm','csv'].includes(ext(f.name)))];
-    let est=null;
-    for(const f of [...new Set(smetaCands)].slice(0,4)){
+    let est=null;const found=[];
+    for(const f of [...new Set(smetaCands)].slice(0,8)){
       try{const rows=['docx'].includes(ext(f.name))?await readDocxTables(f):await readXlsx(f);
-        const r=parseEstimate(rows);
-        if(r.items.length>=3){est={file:f.name,items:r.items,total:r.total,header:r.header};break}
+        const r=parseLSR(rows)||parseEstimate(rows);
+        if(r.items.length>=3)found.push({file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections});
       }catch(e){}
     }
+    /* настоящий сметный расчёт важнее любой таблицы (ВОР, спецификации) */
+    est=found.find(x=>x.kind==='lsr')||found.sort((a,b)=>b.items.length-a.items.length)[0]||null;
     // все файлы — в документы объекта
     S.docs=files.slice(0,300).map(f=>{const [kind,sure]=classify(f.name);return {name:f.name,size:f.size,kind,sure,obj:'',date:f.lastModified?new Date(f.lastModified).toLocaleDateString('ru-RU'):'—'}});
     if(est)S.estimates=[est];
