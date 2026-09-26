@@ -698,7 +698,7 @@ function pObjects(){const o=S.objects[0];return head('Производство',
 
 /* ═══ График работ: строится из контракта, дальше корректируется руками; каждая правка — в журнале ═══ */
 const ISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const fromISO=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(+m[1],+m[2]-1,+m[3]):null};
+const fromISO=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!m)return null;const y=+m[1];if(y<2000||y>2099)return null;return new Date(y,+m[2]-1,+m[3])};
 const ruD=s=>{const d=fromISO(s);return d?d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'}):'—'};
 const pdRu=s=>{const x=String(s||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);return x?new Date(+x[3],+x[2]-1,+x[1]):null};
 function buildSchedule(o,fromEstimate){
@@ -728,7 +728,7 @@ function ensureSchedule(){const o=S.objects[0];if(!o)return null;const e=S.estim
 function schedLog(text){const sc=S.schedule;sc.log.unshift({at:ISO(TODAY),text});sc.log=sc.log.slice(0,30)}
 function schedUpd(id,field,value){const sc=S.schedule;const st=sc.stages.find(x=>x.id===id);if(!st)return;const old=st[field];
   if(field==='done'){value=Math.max(0,Math.min(100,parseInt(value,10)||0))}
-  if((field==='start'||field==='end')&&!fromISO(value)){toast('Дата не распознана');render();return}
+  if((field==='start'||field==='end')&&!fromISO(value)){return}
   if(field==='start'&&fromISO(value)>fromISO(st.end)){st.end=value}
   if(field==='end'&&fromISO(value)<fromISO(st.start)){st.start=value}
   if(String(old)===String(value))return;st[field]=value;
@@ -738,7 +738,7 @@ function schedUpd(id,field,value){const sc=S.schedule;const st=sc.stages.find(x=
 /* факт: одна кнопка «Начали» / «Закончили», даты можно поправить руками */
 function schedFact(id,field,value){const sc=S.schedule;const st=sc.stages.find(x=>x.id===id);if(!st)return;
   if(value==='today')value=ISO(TODAY);if(value==='')value=null;
-  if(value&&!fromISO(value)){toast('Дата не распознана');render();return}
+  if(value&&!fromISO(value)){return}
   const old=st[field]||null;if(old===value)return;st[field]=value;
   if(field==='actEnd'&&value){st.done=100;if(!st.actStart)st.actStart=st.start}
   if(field==='actStart'&&value&&st.done===0)st.done=5;
@@ -752,7 +752,7 @@ function lagOf(st){/* отставание в днях: по факту нача
   if(ps<TODAY)return Math.round((TODAY-ps)/864e5);
   return 0}
 /* фактическое начало работ на объекте: вводится один раз, план пересчитывается от этой даты */
-function schedObjStart(value){const sc=S.schedule;if(!fromISO(value)){toast('Укажите дату начала работ');return}
+function schedObjStart(value){const sc=S.schedule;if(!fromISO(value)){toast('Укажите дату начала работ (год из четырёх цифр)');return}
   const plan0=fromISO(sc.stages[0].start);const delta=Math.round((fromISO(value)-plan0)/864e5);
   sc.actStart=value;
   if(delta!==0){sc.stages.forEach(st=>{if(st.actEnd)return;st.start=ISO(new Date(fromISO(st.start).getTime()+delta*864e5));st.end=ISO(new Date(fromISO(st.end).getTime()+delta*864e5))})}
@@ -768,10 +768,10 @@ function schedShift(){const n=parseInt((document.getElementById('sh_days')||{}).
 function schedReset(){const e=S.estimates[0];if(!confirm(e?'Перестроить график из позиций сметы? Ваши правки будут потеряны.':'Перестроить график из срока контракта? Ваши правки будут потеряны.'))return;const o=S.objects[0];S.schedule=buildSchedule(o,!!e);render()}
 function pSchedule(){const o=S.objects[0];if(!o)return head('Производство','График работ','Появится вместе с объектом')+`<div class="page">${empty('График строится из контракта','Как только появится объект, система разложит срок на этапы и построит календарный график по дням. Дальше сроки правятся прямо в таблице.','Завести объект',"S.screen='wizard';S.step=2;render()")}</div>`;
   const sc=ensureSchedule();const st=sc.stages;
-  const off=d=>Math.round((d-TODAY)/864e5);
-  const starts=st.map(x=>fromISO(x.start)).filter(Boolean),ends=st.map(x=>fromISO(x.end)).filter(Boolean);
-  const s0=Math.min(...starts.map(off),0)-3,s1=Math.max(...ends.map(off),0)+3;
-  const W=760,L=210,x=d=>L+((d-s0)/(s1-s0))*(W-L-14);
+  const off=d=>d?Math.round((d-TODAY)/864e5):0;
+  const starts=st.map(x=>fromISO(x.start)).filter(Boolean),ends=st.map(x=>fromISO(x.actEnd||x.end)).filter(Boolean);
+  const s0=Math.max(-400,Math.min(...starts.map(off),0)-3),s1=Math.min(400,Math.max(...ends.map(off),0)+3);
+  const W=760,L=210,x=d=>L+((Math.max(s0,Math.min(s1,d))-s0)/(s1-s0||1))*(W-L-14);
   const cEnd=fromISO(sc.contractEnd);const lastEnd=new Date(Math.max(...ends));const over=cEnd?Math.round((lastEnd-cEnd)/864e5):0;
   const late=st.filter(x=>fromISO(x.end)<TODAY&&x.done<100);
   const total=st.reduce((a,x)=>a+Math.max(1,off(fromISO(x.end))-off(fromISO(x.start))+1),0);
