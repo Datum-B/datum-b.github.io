@@ -994,7 +994,7 @@ function idDelete(key){const id=idState();id.docs=id.docs.filter(d=>d.key!==key)
 function idClose(){S.idEdit=null;render()}
 /* ═══ Word: собираем .docx прямо в браузере ═══ */
 function docxXml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function dp(text,o={}){const rpr=`<w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman" w:cs="Times New Roman"/>${o.b?'<w:b/>':''}${o.i?'<w:i/>':''}${o.color?`<w:color w:val="${o.color}"/>`:''}<w:sz w:val="${o.sz||24}"/></w:rPr>`;
+function dp(text,o={}){const f=o.font||"Times New Roman";const rpr=`<w:rPr><w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}"/>${o.b?'<w:b/>':''}${o.i?'<w:i/>':''}${o.color?`<w:color w:val="${o.color}"/>`:''}<w:sz w:val="${o.sz||24}"/></w:rPr>`;
   const ppr=`<w:pPr>${o.jc?`<w:jc w:val="${o.jc}"/>`:''}<w:spacing w:after="${o.after==null?60:o.after}" w:line="240" w:lineRule="auto"/>${o.ind?`<w:ind w:left="${o.ind}"/>`:''}${o.border?'<w:pBdr><w:bottom w:val="single" w:sz="4" w:space="1" w:color="000000"/></w:pBdr>':''}</w:pPr>`;
   const runs=String(text==null?'':text).split('\n').map((t,i)=>(i?'<w:r>'+rpr+'<w:br/></w:r>':'')+`<w:r>${rpr}<w:t xml:space="preserve">${docxXml(t)}</w:t></w:r>`).join('');
   return `<w:p>${ppr}${runs}</w:p>`}
@@ -1002,6 +1002,13 @@ function dcap(t){return dp(t,{i:true,sz:15,jc:'center',after:100,color:'666666'}
 function dline(v,cap){return dp(v||'—',{after:0})+(cap?dcap(cap):'')}
 function dtable(rows,widths,noBorder){const bd=noBorder?'':'<w:tcBorders><w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/><w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/></w:tcBorders>';const tc=(t,w,b)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${bd}</w:tcPr>${dp(t,{sz:noBorder?22:18,b,after:0})}</w:tc>`;
   return `<w:tbl><w:tblPr><w:tblW w:w="${widths.reduce((a,b)=>a+b,0)}" w:type="dxa"/></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.map((r,ri)=>typeof r==='string'?`<w:tr><w:tc><w:tcPr><w:tcW w:w="${widths.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:gridSpan w:val="${widths.length}"/><w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>${bd}</w:tcPr>${dp(r,{sz:18,b:true,after:0})}</w:tc></w:tr>`:`<w:tr>${r.map((c,ci)=>tc(c,widths[ci],ri===0&&!noBorder)).join('')}</w:tr>`).join('')}</w:tbl>`}
+/* оформленная таблица: шапка с заливкой, выравнивание, строки-группы, шрифт документа */
+function dtableNice(rows,widths,o={}){const font=o.font||'Arial';const sz=o.sz||17;const align=o.align||[];const tot=widths.reduce((a,b)=>a+b,0);
+  const bd='<w:tcBorders><w:top w:val="single" w:sz="4" w:color="BFBFBF"/><w:left w:val="single" w:sz="4" w:color="BFBFBF"/><w:bottom w:val="single" w:sz="4" w:color="BFBFBF"/><w:right w:val="single" w:sz="4" w:color="BFBFBF"/></w:tcBorders>';
+  const mar='<w:tcMar><w:top w:w="50" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="50" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar>';
+  const tc=(t,w,i,ri)=>{const hdr=ri===0;const fill=hdr?'<w:shd w:val="clear" w:color="auto" w:fill="0B0D10"/>':'';return `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${bd}${fill}${mar}<w:vAlign w:val="center"/></w:tcPr>${dp(t,{font,sz:hdr?15:sz,b:hdr,color:hdr?'FFFFFF':undefined,jc:align[i]||(hdr?'left':undefined),after:0})}</w:tc>`};
+  const group=t=>`<w:tr><w:tc><w:tcPr><w:tcW w:w="${tot}" w:type="dxa"/><w:gridSpan w:val="${widths.length}"/>${bd}<w:shd w:val="clear" w:color="auto" w:fill="FBF3E9"/>${mar}</w:tcPr>${dp(t,{font,sz:15,b:true,color:'7C4A16',after:0})}</w:tc></w:tr>`;
+  return `<w:tbl><w:tblPr><w:tblW w:w="${tot}" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>${rows.map((r,ri)=>typeof r==='string'?group(r):`<w:tr>${ri===0?'<w:trPr><w:tblHeader/></w:trPr>':''}${r.map((c,ci)=>tc(c,widths[ci],ci,ri)).join('')}</w:tr>`).join('')}</w:tbl>`}
 async function docxBlob(bodyXml,opts={}){if(!window.JSZip)throw new Error('Модуль Word ещё загружается — подождите пару секунд');const z=new JSZip();
   z.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
   z.file('_rels/.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
@@ -1508,7 +1515,7 @@ function supplyItems(){const e=S.estimates[0];const map=new Map();
   e.items.forEach(it=>{planCost(it).mats.forEach(m=>{if(!m.name||SUPPLY_SKIP.test(m.name))return;let unit=String(m.unit||'').replace(/м2/,'м²').replace(/м3/,'м³').trim();let qty=m.qty||0;const um=unit.match(/^(\d+)\s+(.+)$/);if(um){qty=qty*+um[1];unit=um[2]}/* «100 шт» → штуки */
     if(unit==='%'||!(qty>0))return;if(unit==='т'){qty=qty*1000;unit='кг'}/* тонны клея и затирки — в килограммах */
     const key=(m.name.toLowerCase().replace(/\s+/g,' ')+'|'+unit.toLowerCase());
-    const cur=map.get(key)||{name:m.name.replace(/\s*\(прим\.\)/,''),unit,qty:0,sum:0,code:m.code||'',uses:[]};cur.qty+=qty;cur.sum+=m.sum||0;if(!cur.uses.includes(it.num))cur.uses.push(it.num);map.set(key,cur)})});
+    const cur=map.get(key)||{name:m.name.replace(/\s*\(прим\.\)/,'').replace(/\s*V=.*$/,'').replace(/[,;\s]+$/,''),unit,qty:0,sum:0,code:m.code||'',uses:[]};cur.qty+=qty;cur.sum+=m.sum||0;if(!cur.uses.includes(it.num))cur.uses.push(it.num);map.set(key,cur)})});
   const items=[...map.values()].filter(x=>x.sum>=SUPPLY_MIN).map(x=>{const g=(SUPPLY_GROUPS.find(([,re])=>re.test(x.name))||['Прочие материалы'])[0];const isInt=/^(шт|компл|пар|уп|мешок|рулон)/i.test(x.unit);const bulk=!isInt||/дюбел|шуруп|саморез|гвозд/i.test(x.name);/* запас 5 % — только на расходуемое; оборудование и изделия — ровно по смете */
     const order=Math.max(0,x.qty*(bulk?1.05:1));const ord=isInt?Math.ceil(order):Math.ceil(order*10)/10;
     return Object.assign(x,{group:g,order:ord,price:x.qty?x.sum/x.qty:0,pack:packOf(x.name,x.unit,ord)})}).filter(x=>x.group!=='Прочие материалы');
@@ -1545,10 +1552,20 @@ async function supplyRequest(kind){const e=S.estimates[0];if(!e)return;const x=i
     aoa.push([]);aoa.push(['','','Итого по смете','','','','','',+total.toFixed(2)]);
     const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[4,22,48,7,11,13,26,13,15,14,18,10,11,13,11].map(w=>({wch:w}));ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}},{s:{r:2,c:0},e:{r:2,c:9}}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Заявка');XLSX.writeFile(wb,`Заявка на материалы — ${code}.xlsx`);toast(`Заявка в Excel: ${items.length} материалов на ${m(total)} — с колонками для факта закупки`);return}
-  const rows=[['№','Материал','Ед.','По смете','К заказу','В магазине (упаковка)','Сумма по смете, ₽','Заказано / примечание']];let g='',n=0;
-  items.forEach(it=>{if(it.group!==g){g=it.group;rows.push(g.toUpperCase())}n++;rows.push([String(n),it.name,it.unit,fq(it.qty),fq(it.order),it.pack.text,fmtRub(it.sum),''])});
-  const body=dp('ЗАЯВКА НА МАТЕРИАЛЫ',{b:true,jc:'center',sz:28,after:0})+dp('(по локальному сметному расчёту, к закупке)',{jc:'center',after:160})+dp('Объект: '+x.object+'.')+dp('Контракт '+x.contract+'. Подрядчик: '+x.company+'.')+dp('Дата заявки: '+ruD(ISO(TODAY))+'. Срок поставки: до __________. Адрес доставки: '+(x.address||'__________')+'.',{after:160})
-    +dtable(rows,[450,4600,700,1000,1000,2600,1300,1700])+dp('',{after:120})+dp('Итого по смете: '+fmtRub(total)+' ₽. Количество к заказу — с запасом 5 % на бой и подрезку, упаковка — стандартная магазинная (лист 3 м², профиль 3 м, мешок 25 кг, бухта 100 м). Мелкий крепёж и расходники дешевле 300 ₽ — за счёт хозрасходов. Марку и производителя согласовать с заказчиком до закупки.',{sz:20})+dp('',{after:200})+dp(`${x.signHead}  ______________  ${shortFio(x.fio)}`);
+  const shortName=t=>{t=String(t).replace(/\s*\(прим\.\)/,'');if(t.length<=70)return t;const cut=t.search(/,\s|\s\(|;/);return cut>25?t.slice(0,cut):t.slice(0,70)+'…'};
+  const F='Arial';const rows=[['№','Материал','Ед.','По смете','К заказу','Упаковка в магазине','По смете, ₽','Заказано / отметка']];let g='',n=0;
+  items.forEach(it=>{if(it.group!==g){g=it.group;rows.push(g.toUpperCase())}n++;rows.push([String(n),shortName(it.name),it.unit,fq(it.qty),fq(it.order),it.pack.text,fmtRub(it.sum),''])});
+  const groups=[...new Set(items.map(i=>i.group))];
+  const body=dp((S.company||{}).name||'',{font:F,b:true,sz:20,after:0,color:'0B0D10'})+dp('заявка на материалы · '+ruD(ISO(TODAY)),{font:F,sz:16,color:'7C4A16',after:200})
+    +dp('ЗАЯВКА НА МАТЕРИАЛЫ',{font:F,b:true,sz:36,after:40})+dp('Объект '+(code?code+' — ':'')+x.object,{font:F,sz:20,after:200,color:'444444'})
+    +dtableNice([['Контракт','Подрядчик','Адрес доставки','Срок поставки'],[x.contract||'—',x.company||'—',x.address||'________________','до ______________']],[3600,3600,4200,2900],{font:F,sz:17})
+    +dp('',{after:160})
+    +dtableNice(rows,[420,4700,650,950,950,3000,1350,2280],{font:F,sz:17,align:['center',undefined,'center','right','right',undefined,'right',undefined]})
+    +dp('',{after:120})
+    +dtableNice([['Материалов','Групп','Итого по сметным ценам, без НДС'],[String(items.length),String(groups.length),fmtRub(total)+' ₽']],[3000,3000,8300],{font:F,sz:18,align:['center','center','right']})
+    +dp('',{after:120})
+    +dp('Количество к заказу — с запасом 5 % на бой и подрезку; оборудование и изделия — ровно по смете. Упаковка — стандартная магазинная: лист ГКЛ 1200×2500 (3 м²), профиль 3 м, мешок 25 кг, канистра 10 л, бухта 100 м. Мелкий крепёж и расходники дешевле 300 ₽ — за счёт хозрасходов. Марку и производителя согласовать с заказчиком до закупки (акты согласования материалов).',{font:F,sz:15,color:'666666',after:240})
+    +dtableNice([['Составил','Согласовал (снабжение)','Утвердил'],[x.signHead+'\n\n______________  '+shortFio(x.fio),'\n\n______________  /______________/','\n\n______________  /______________/']],[4800,4800,4700],{font:F,sz:16});
   try{saveBlob(await docxBlob(body,{landscape:true}),`Заявка на материалы — ${code}.docx`);toast(`Заявка снабженцу: ${items.length} материалов на ${m(total)} — файл в загрузках`)}catch(err){toast('Не удалось собрать заявку: '+(err.message||err))}}
 function pEstimates(){const e=S.estimates[0];if(!e)return head('Производство','Сметы · план/факт','Смет пока нет')+`<div class="page">${empty('Смета — это план дохода и затрат по объекту','Загрузите локальный сметный расчёт: система разложит его на позиции, посчитает плановую себестоимость и будет сравнивать с реальными затратами.','Загрузить смету',"S.screen='wizard';S.step=3;render()",['SmetaWIZARD, ГрандСмета — Word или Excel','По каждой позиции: доход, план затрат, факт, прибыль','Заявка снабженцу и ВОР прорабу — из позиций'])}</div>`;
   const rows=e.items.map(it=>({it,s:posSummary(it)}));
