@@ -564,7 +564,7 @@ async function registryLookup(inn){
     const taxMap={USN:'УСН',ENVD:'ЕНВД',ESHN:'ЕСХН',PSN:'Патент'};
     const tax=(d.finance&&d.finance.tax_system)?(taxMap[d.finance.tax_system]||d.finance.tax_system):'';
     return {status:'ok',company:{inn,fromRegistry:true,
-      name:(d.name&&(d.name.short_with_opf||d.name.full_with_opf))||it.value||'',
+      name:(d.name&&(d.name.short_with_opf||d.name.full_with_opf))||it.value||'',fullName:(d.name&&d.name.full_with_opf)?d.name.full_with_opf+(d.name.short_with_opf?' ('+d.name.short_with_opf+')':''):'',
       ogrn:d.ogrn||'',kpp:d.kpp||'',
       addr:addr.unrestricted_value||addr.value||'',
       head:[mg.post,mg.name].filter(Boolean).join(' '),
@@ -597,16 +597,17 @@ const ROLES=[['Руководитель проекта','свои объекты
 function stepTeam(){return `<div class="card rise">
   <div class="eyebrow" style="color:var(--o700)">Шаг 2</div><h2 style="margin-top:8px">Команда и доступы</h2>
   <p class="lede" style="margin-top:10px;font-size:14.5px">Приглашение уходит в Telegram или на почту. Роль определяет, что человек видит; доступ к объектам выдаётся отдельно — чужая стройка не откроется даже по прямой ссылке.</p>
-  <div style="display:grid;gap:8px;margin-top:18px">${S.team.map((t,i)=>`<div class="row3" style="grid-template-columns:1fr 1fr auto"><div><div style="font-weight:600;font-size:14px">${esc(t.name)}</div><div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(t.contact)}</div></div><span class="chip">${t.role}</span><button class="btn sm ghost" onclick="S.team.splice(${i},1);render()">Убрать</button></div>`).join('')}</div>
+  <div style="display:grid;gap:8px;margin-top:18px">${S.team.map((t,i)=>`<div class="row3" style="grid-template-columns:1fr 1fr auto"><div><div style="font-weight:600;font-size:14px">${esc(t.name)}</div><div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(t.contact)}</div></div><span class="chip">${t.role}${t.doc?' · '+esc(t.doc):''}</span><button class="btn sm ghost" onclick="S.team.splice(${i},1);render()">Убрать</button></div>`).join('')}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-top:14px;align-items:end">
     <div class="field"><span class="eyebrow">Фамилия и имя</span><input id="tm_name" placeholder="Абдуллаев Абдулжалил"></div>
     <div class="field"><span class="eyebrow">Телефон или почта</span><input id="tm_contact" placeholder="+7 981 000-00-00"></div>
     <div class="field"><span class="eyebrow">Роль</span><select id="tm_role">${ROLES.map(([r])=>`<option>${r}</option>`).join('')}</select></div>
     <button class="btn" onclick="addMember()">Пригласить</button></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px"><div class="field"><span class="eyebrow">Документ (для списка ИТР и журналов)</span><input id="tm_doc" placeholder="Паспорт 4024 000000 / Патент 78 …"></div><div class="field"><span class="eyebrow">Дата рождения (для журнала вводного инструктажа)</span><input id="tm_birth" placeholder="дд.мм.гггг"></div></div>
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin-top:20px">${ROLES.map(([r,d])=>`<div class="box soft" style="padding:13px"><div style="font-weight:600;font-size:13.5px">${r}</div><div style="font-size:12.5px;color:var(--ink-500);margin-top:4px;line-height:1.5">${d}</div></div>`).join('')}</div>
   ${nav(true,'S.step=2;render()',S.team.length?`Дальше · приглашено ${S.team.length}`:'Дальше без команды')}</div>`}
 function addMember(){const n=document.getElementById('tm_name').value.trim();if(!n){toast('Укажите, кого приглашаем');return}
-  S.team.push({name:n,contact:document.getElementById('tm_contact').value.trim()||'по ссылке в Telegram',role:document.getElementById('tm_role').value});render();toast('Приглашение отправлено')}
+  S.team.push({name:n,contact:document.getElementById('tm_contact').value.trim()||'по ссылке в Telegram',role:document.getElementById('tm_role').value,doc:(document.getElementById('tm_doc')||{value:''}).value.trim(),birth:(document.getElementById('tm_birth')||{value:''}).value.trim()});render();toast('Приглашение отправлено')}
 
 /* шаг 3 */
 function stepObject(){const o=S.objects[0];bindDrop('drop_c',onContractFiles);
@@ -914,12 +915,13 @@ function qtyText(q,u){u=String(u||'').trim();const m=u.match(/^(\d+)\s+(.*)$/);l
 function idState(){if(!S.id)S.id={settings:null,docs:[],skip:{}};return S.id}
 function idSettings(){const id=idState();const o=S.objects[0]||{};const c=S.company||{};
   if(!id.settings){id.settings={
-    object:(o.subject||'')+(o.customer?' — '+o.customer:'')+(o.address?', '+o.address:''),
+    object:o.subject||'',
     builder:o.customer||'',contractor:(c.name||'')+(c.addr?', юридический адрес: '+c.addr:'')+(c.ogrn?'. ОГРН '+c.ogrn:'')+(c.inn?', ИНН '+c.inn:''),
     designer:'—',repBuilder:'',repContractor:(()=>{const h=(c.head||'').trim();const m=h.match(/^(.*?(директор|руководитель|предприниматель|управляющий))\s+(.+)$/i);return m?m[1]+' '+(c.name||'')+' '+m[3]:h+(c.name?' '+c.name:'')})(),repOrder:'',repControl:'',repDesigner:'—',repOther:'',
-    contract:(o.number?'№ '+o.number:'')+(o.start?' от '+o.start:''),copies:'3'}}
+    contract:(o.number?'№ '+o.number:'')+(o.start?' от '+o.start:''),copies:'3',address:o.address||'',customerFull:o.customer||'',companyFull:c.fullName||'',contractDate:o.start||'',orderDate:o.start||'',custPost:'',custFio:'',controlOrg:'',controlPost:'',controlFio:'',workKind:'',gsn:''}}
+  const st=id.settings;if(!st.repBuilder&&st.custPost&&st.custFio)st.repBuilder=st.custPost+' '+(o.customer||'')+' '+RU.short(st.custFio)+' (заказчик)';if(!st.repControl&&st.controlFio)st.repControl=[st.controlPost,st.controlOrg,RU.short(st.controlFio)].filter(Boolean).join(' ')+' (строительный контроль)';
   return id.settings}
-function idSet(k,v){idSettings()[k]=v;render()}
+function idSet(k,v){idSettings()[k]=v;if(k==='custPost'||k==='custFio'||k==='controlFio'||k==='controlOrg'||k==='controlPost'){const st=idSettings();if(st.custPost&&st.custFio)st.repBuilder=st.custPost+' '+((S.objects[0]||{}).customer||'')+' '+RU.short(st.custFio)+' (заказчик)';if(st.controlFio)st.repControl=[st.controlPost,st.controlOrg,RU.short(st.controlFio)].filter(Boolean).join(' ')+' (строительный контроль)'}render()}
 /* какие документы нужны по объекту: АОСР на каждую работу графика + общие журналы, ведомости, акты, реестр */
 function idRequired(){const st=(S.schedule&&S.schedule.stages)||[];const list=[];
   st.forEach((x,i)=>list.push({key:'aosr:'+x.id,group:'АОСР',title:'АОСР — '+x.name,stage:x,order:i+1}));
@@ -1116,14 +1118,107 @@ const DOCS={
     return landscape(dtable([[`СОГЛАСОВАНО\nПодрядчик: ${x.company}\n${x.post} ______________ ${shortFio(x.fio)}\n«____» ______________ 20___ г.`,`УТВЕРЖДАЮ\nЗаказчик: ${x.customer}\n______________ /______________/\n«____» ______________ 20___ г.`]],[7500,7500],true)+dp('',{after:120})+dp('ГРАФИК ПРОИЗВОДСТВА РАБОТ',{b:true,jc:'center',sz:28,after:0})+dp('(календарный план выполнения работ)',{jc:'center',after:160})+dp('Объект: '+x.object+'.')+dp('Государственный контракт '+x.contract+'. Основание: локальный сметный расчёт.')+dp('Срок выполнения работ: с '+(x.start||'____')+' по '+(x.end||'____')+'.',{after:160})+dtable(rows,[500,5200].concat(weeks.map(()=>Math.max(700,Math.floor(9300/Math.max(1,weeks.length))))))+dp('',{after:120})+dp('Примечания: начало работ — с даты подписания акта передачи объекта; скрытые работы предъявляются Заказчику до закрытия последующими работами с оформлением АОСР; календарный план может корректироваться по согласованию Сторон без изменения общего срока и цены Контракта.',{sz:20}))}}
 };
 function idSections(){const e=S.estimates[0];if(!e||!e.items)return [];const map=new Map();e.items.forEach(it=>{const k=it.section||'Работы';if(!map.has(k))map.set(k,[]);map.get(k).push(it)});return [...map.entries()].map(([name,items])=>({name,items}))}
-async function idDownloadLib(key){const spec=DOCS[key];if(!spec)return;try{const x=idCtx();const st=S.schedule?S.schedule.stages:[];x.startISO=S.schedule&&S.schedule.actStart?S.schedule.actStart:(st[0]?st[0].start:ISO(TODAY));const fa=st.map(s=>fromISO(s.actStart)).filter(Boolean),fe=st.filter(s=>s.actEnd).map(s=>fromISO(s.actEnd));x.startFact=fa.length?ruD(ISO(new Date(Math.min(...fa)))):'';x.endFact=(fe.length&&st.every(s=>s.actEnd))?ruD(ISO(new Date(Math.max(...fe)))):'';
+async function idDownloadLib(key){if(key==='matact'){await idDownloadMatActs();return}if(TPL_DOCS[key]){await idDownloadTpl(key);return}const spec=DOCS[key];if(!spec)return;try{const x=idCtx();const st=S.schedule?S.schedule.stages:[];x.startISO=S.schedule&&S.schedule.actStart?S.schedule.actStart:(st[0]?st[0].start:ISO(TODAY));const fa=st.map(s=>fromISO(s.actStart)).filter(Boolean),fe=st.filter(s=>s.actEnd).map(s=>fromISO(s.actEnd));x.startFact=fa.length?ruD(ISO(new Date(Math.min(...fa)))):'';x.endFact=(fe.length&&st.every(s=>s.actEnd))?ruD(ISO(new Date(Math.max(...fe)))):'';
     let r=spec.xml(x);const opts=typeof r==='object'?r:{body:r};saveBlob(await docxBlob(opts.body,opts),`${spec.title} — ${(S.objects[0]||{}).code||''}.docx`);
     let d=idDoc(key);if(!d){d={key,type:'doc',title:spec.title,date:ISO(TODAY)};idState().docs.push(d)}if(!d.status||d.status==='none'||d.status==='draft')d.status='ready';render();toast('Файл Word сохранён — откройте, проверьте и распечатайте')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
 
-async function idDownload(key){try{let xml,name;if(key==='registry'){xml=registryXml();name=`Реестр ИД ${(S.objects[0]||{}).code||''}.docx`}else{const d=idDoc(key);if(!d)return;xml=aosrXml(d);name=`АОСР № ${d.number}. ${(d.works||'').split(' — ')[0].slice(0,60)}.docx`;if(d.status==='draft')d.status='ready'}
-    saveBlob(await docxBlob(xml),name);render();toast('Файл Word сохранён — откройте, проверьте и распечатайте')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+/* ═══ Документы по шаблонам компании: берём действующие формы ИК-7/НС115, подставляем реквизиты объекта ═══ */
+const TPL_CACHE={};
+async function tplLoad(name){if(TPL_CACHE[name])return TPL_CACHE[name];const r=await fetch('templates/'+name+'.docx?'+VERSION.replace(/\W/g,''),{cache:'force-cache'});if(!r.ok)throw new Error('Шаблон '+name+' не найден на сервере ('+r.status+')');const buf=await r.arrayBuffer();TPL_CACHE[name]=buf;return buf}
+/* простая русская морфология для реквизитов; результат показывается пользователю и правится руками */
+const RU={
+  gen:s=>String(s||'').trim().replace(/(\S+)/g,w=>/ый$/.test(w)?w.replace(/ый$/,'ого'):/ий$/.test(w)?w.replace(/ий$/,'его'):/[бвгджзклмнпрстфхцчшщ]$/i.test(w)?w+'а':/ь$/.test(w)?w.replace(/ь$/,'я'):/а$/.test(w)?w.replace(/а$/,'ы'):/я$/.test(w)?w.replace(/я$/,'и'):w),
+  dat:s=>String(s||'').trim().replace(/(\S+)/g,w=>/ый$/.test(w)?w.replace(/ый$/,'ому'):/ий$/.test(w)?w.replace(/ий$/,'ему'):/[бвгджзклмнпрстфхцчшщ]$/i.test(w)?w+'у':/ь$/.test(w)?w.replace(/ь$/,'ю'):/а$/.test(w)?w.replace(/а$/,'е'):w),
+  fioGen:s=>{const p=String(s||'').trim().split(/\s+/);return p.map((w,i)=>{if(/^[А-ЯЁ]\.$/.test(w)||/^[А-ЯЁ]\.[А-ЯЁ]\.$/.test(w))return w;if(i===2){if(/ич$/.test(w))return w+'а';if(/на$/.test(w))return w.replace(/на$/,'ны');}if(i===1){if(/[йь]$/.test(w))return w.replace(/[йь]$/,'я');if(/а$/.test(w))return w.replace(/а$/,'ы');if(/[бвгджзклмнпрстфхцчшщ]$/i.test(w))return w+'а';return w}if(/[бвгджзклмнпрстфхцчшщ]$/i.test(w))return w+'а';if(/ый$/.test(w))return w.replace(/ый$/,'ого');if(/ий$/.test(w))return w.replace(/ий$/,'ого');if(/ая$/.test(w))return w.replace(/ая$/,'ой');if(/а$/.test(w)&&i===0)return w.replace(/а$/,'ой');return w}).join(' ')},
+  fioDat:s=>{const p=String(s||'').trim().split(/\s+/);return p.map((w,i)=>{if(/^[А-ЯЁ]\.$/.test(w)||/^[А-ЯЁ]\.[А-ЯЁ]\.$/.test(w))return w;if(/[бвгджзклмнпрстфхцчшщ]$/i.test(w))return w+'у';if(/ый$/.test(w))return w.replace(/ый$/,'ому');if(/ий$/.test(w))return w.replace(/ий$/,'ому');if(/ая$/.test(w))return w.replace(/ая$/,'ой');if(/а$/.test(w)&&i===0)return w.replace(/а$/,'ой');return w}).join(' ')},
+  short:s=>{const m=String(s||'').trim().match(/^(\S+)\s+(\S)\S*\s*(\S)?/);return m?`${m[1]} ${m[2]}.${m[3]?m[3]+'.':''}`:s},
+  shortR:s=>{const m=String(s||'').trim().match(/^(\S+)\s+(\S)\S*\s*(\S)?/);return m?`${m[2]}.${m[3]?m[3]+'.':''} ${m[1]}`:s},
+  lower1:s=>s?s[0].toLowerCase()+s.slice(1):s,upper1:s=>s?s[0].toUpperCase()+s.slice(1):s,
+  objDat:s=>{s=String(s||'');const m=s.match(/^(Текущий|Капитальный|Косметический)\s+ремонт(.*)$/i);if(m)return RU.lower1(m[1]).replace(/ый$/,'ому')+' ремонту'+m[2];const m2=s.match(/^Выполнение работ(.*)$/i);if(m2)return 'выполнению работ'+m2[1];return 'выполнению работ: «'+s+'»'}
+};
+const ruLongD=iso=>ruLong(iso);
+function tplValues(){const s=idSettings();const o=S.objects[0]||{};const c=S.company||{};const sc=S.schedule;
+  const head=(c.head||'').trim();const hm=head.match(/^(.*?(директор|руководитель|предприниматель|управляющий|начальник))\s+(.+)$/i);const post=hm?hm[1]:'Генеральный директор';const fio=hm?hm[3]:head;
+  const startISO=(sc&&sc.actStart)||(sc&&sc.stages[0]?sc.stages[0].start:null)||(o.start?ISO(pdRu(o.start)):ISO(TODAY));
+  const endISO=(sc&&sc.contractEnd)||(o.end?ISO(pdRu(o.end)):'');
+  const custPost=s.custPost||'',custFio=s.custFio||'';
+  const obj=s.object||o.subject||'';const objCap=RU.upper1(obj);
+  const v={
+    COMPANY:c.name||'',COMPANY_FULL:s.companyFull||c.fullName||c.name||'',COMPANY_ADDR:c.addr||'',INN:c.inn||'',KPP:c.kpp||'',OGRN:c.ogrn||'',
+    COMPANY_REQ:['ИНН '+(c.inn||'____'),'КПП '+(c.kpp||'____'),'ОГРН '+(c.ogrn||'____'),'адрес: '+(c.addr||'____')].join(', '),
+    CUSTOMER:o.customer||s.builder||'',CUSTOMER_FULL:s.customerFull||s.builder||o.customer||'',CUSTOMER_REQ:s.customerReq||'',CUSTOMER_INN:s.customerInn||'',CUSTOMER_TAIL:'',
+    CUST_HEAD:RU.short(custFio),CUST_HEAD_R:RU.shortR(custFio),CUST_HEAD_G:RU.fioGen(custFio),CUST_HEAD_DAT:(()=>{const m=custFio.match(/^(\S+)\s+(\S)\S*\s*(\S)?/);return m?`${m[2]}.${m[3]?m[3]+'.':''} ${RU.fioDat(m[1])}`:custFio})(),
+    CUST_HEAD_POST:RU.upper1(custPost),CUST_HEAD_POST_L:RU.lower1(custPost),CUST_HEAD_POST_G:RU.lower1(RU.gen(custPost)),CUST_HEAD_POST_DAT:RU.upper1(RU.dat(custPost)),
+    CONTROL_ORG:s.controlOrg||'',CONTROL_FIO:RU.short(s.controlFio||''),CONTROL_R:RU.shortR(s.controlFio||''),CONTROL:[s.controlPost,s.controlOrg,RU.short(s.controlFio||'')].filter(Boolean).join(' '),CONTROL2:[s.controlPost2||'Инженер',s.controlOrg].filter(Boolean).join(' '),
+    DIR:RU.short(fio),DIR_R:RU.shortR(fio),DIR_FULL:fio,DIR_FULL_G:RU.fioGen(fio),DIR_SURNAME:fio.split(/\s+/)[0]||'',
+    POST:RU.upper1(post),POST_L:RU.lower1(post),POST_G:RU.lower1(RU.gen(post)),
+    OBJECT:RU.lower1(obj),OBJECT_CAP:objCap,OBJECT_DAT:RU.objDat(objCap),OBJECT_INFO:objCap+'. Вид работ — '+(s.workKind||'текущий (косметический) ремонт помещений')+'.',
+    ADDRESS:o.address||s.address||'',CONTRACT_NO:o.number||'',CONTRACT_DATE:s.contractDate||o.start||'',CONTRACT_DATE_LONG:ruLong(s.contractDate?ISO(pdRu(s.contractDate)):(o.start?ISO(pdRu(o.start)):'')),
+    START:ruD(startISO),START_LONG:ruLong(startISO),END:endISO?ruD(endISO):(o.end||''),END_LONG:ruLong(endISO),
+    CODE:o.code||'',ORDER_DATE:s.orderDate||s.contractDate||o.start||'',GSN:s.gsn||'Государственный строительный надзор за объектом не осуществляется (текущий ремонт).',COPIES:s.copies||'3',
+    REP_BUILDER:s.repBuilder||'',REP_CONTRACTOR:s.repContractor+(s.repOrder?' Подрядчик, '+s.repOrder:''),REP_CONTRACTOR_SIGN:s.repContractor||'',REP_OTHER:s.repControl||'',
+    NOTE1:'',NOTE2:''};
+  return v}
+function xmlEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function tplFill(xml,values,rowsets){
+  /* клонирование строк-образцов: строка с {{PREFIX_...}} повторяется для каждого элемента */
+  Object.entries(rowsets||{}).forEach(([prefix,items])=>{
+    const re=new RegExp('<w:tr\\b[^>]*>(?:(?!</w:tr>)[\\s\\S])*?\\{\\{'+prefix+'_[A-Z_0-9]+\\}\\}[\\s\\S]*?</w:tr>');
+    let m;while((m=re.exec(xml))){const row=m[0];
+      const out=(items.length?items:[{}]).map((it,i)=>row.replace(new RegExp('\\{\\{'+prefix+'_([A-Z_0-9]+)\\}\\}','g'),(_,k)=>k==='N'?String(i+1):xmlEsc(it[k]!=null?it[k]:''))).join('');
+      xml=xml.slice(0,m.index)+out+xml.slice(m.index+row.length);re.lastIndex=0}});
+  xml=xml.replace(/\{\{([A-Z_0-9]+)\}\}/g,(_,k)=>xmlEsc(values[k]!=null?values[k]:''));
+  return xml}
+async function tplDocx(name,values,rowsets){if(!window.JSZip)throw new Error('Модуль Word ещё загружается — подождите пару секунд');const buf=await tplLoad(name);const z=await JSZip.loadAsync(buf);let xml=await z.file('word/document.xml').async('string');
+  xml=tplFill(xml,values,rowsets);z.file('word/document.xml',xml);const u8=await z.generateAsync({type:'uint8array'});return new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})}
+function teamItems(){const c=S.company||{};const head=(c.head||'').trim();const hm=head.match(/^(.*?(директор|руководитель|предприниматель|управляющий|начальник))\s+(.+)$/i);const fio=hm?hm[3]:head;
+  return [{NAME:fio,ROLE:(hm?hm[1]:'Генеральный директор')+' — ответственный производитель работ, ответственный за ОТ и ПБ',DOC:'',BIRTH:''}].concat((S.team||[]).map(t=>({NAME:t.name||'',ROLE:t.role||'',DOC:t.doc||'',BIRTH:t.birth||''})))}
+function workerItems(){return (S.team||[]).map(t=>({NAME:t.name||'',ROLE:t.role||'',DOC:t.doc||'',BIRTH:t.birth||''}))}
+/* какие документы делаем по шаблонам компании и что в них подставляем */
+const TPL_DOCS={
+  journal:{tpl:'ozr',title:'Общий журнал работ (форма № 1026/пр)'},
+  transfer:{tpl:'transfer',title:'Акт передачи объекта для выполнения работ'},
+  notice:{tpl:'notice',title:'Уведомление о начале производства работ'},
+  itr:{tpl:'itr',title:'Список ИТР и рабочих',rows:()=>({W:teamItems()})},
+  incontrol:{tpl:'incontrol',title:'Журнал входного контроля материалов и изделий'},
+  jot:{tpl:'jot',title:'Журнал инструктажей по охране труда на рабочем месте',rows:()=>({W:workerItems()})},
+  jvv:{tpl:'jvv',title:'Журнал регистрации вводного инструктажа по охране труда',rows:()=>({W:workerItems()})},
+  jpb:{tpl:'jpb',title:'Журнал учёта противопожарных инструктажей',rows:()=>({W:workerItems()})},
+  jsiz:{tpl:'jsiz',title:'Журнал учёта выдачи СИЗ',rows:()=>({W:workerItems()})},
+  jtool:{tpl:'jtool',title:'Журнал учёта выдачи инструмента и инвентаря'},
+  jtime:{tpl:'jtime',title:'Журнал учёта рабочего времени',rows:()=>({W:workerItems()})},
+  materials:{tpl:'materials',title:'Сводная ведомость согласования материалов',rows:()=>({SEC:idSections().map((s,i)=>({NAME:s.name,COUNT:String(s.items.length)}))})},
+  equip:{tpl:'equip',title:'Ведомость смонтированного оборудования',rows:()=>({IT:(S.schedule?S.schedule.stages:[]).filter(s=>/электро/i.test(s.section||'')||/щит|светильник|автомат|выключател|розетк|кабел|прибор|дверн/i.test(s.name)).map(s=>({NAME:s.name,UNIT:s.unit||'',QTY:s.qty!=null?String(s.qty):''}))})},
+  eltech:{tpl:'eltech',title:'Акт технической готовности электромонтажных работ',rows:()=>({IT:(S.schedule?S.schedule.stages:[]).filter(s=>/электро/i.test(s.section||'')).map(s=>({NAME:s.name,UNIT:s.unit||'',QTY:s.qty!=null?String(s.qty):''}))})},
+  accept:{tpl:'accept',title:'Акт приёмки объекта в эксплуатацию'},
+  handover:{tpl:'handover',title:'Акт сдачи объекта в эксплуатацию'},
+  noenergy:{tpl:'noenergy',title:'Акт об отсутствии потребления энергоресурсов Заказчика'},
+  registry:{tpl:'registry',title:'Реестр исполнительной документации',rows:()=>{const s=idSettings();const req=idRequired();const id=idState();const items=[];
+    req.filter(r=>r.group==='АОСР'&&!id.skip[r.key]).forEach(r=>{const d=idDoc(r.key);items.push({NAME:`Акт освидетельствования скрытых работ № ${d?d.number:'__'}. ${r.stage.name}`,DATE:d&&d.date?ruD(d.date):'__________',COPIES:s.copies||'3'})});
+    items.push({NAME:'Реестр документов о качестве (сертификаты соответствия, декларации, паспорта) на применённые материалы',DATE:'__________',COPIES:'1'},{NAME:'Копии сертификатов, деклараций и паспортов на применённые материалы',DATE:'__________',COPIES:'1'},{NAME:'Общий журнал работ № 1 (приказ Минстроя России от 02.12.2022 № 1026/пр)',DATE:'__________',COPIES:'1'},{NAME:'Журнал входного контроля материалов и изделий',DATE:'__________',COPIES:'1'});
+    return {RG:items}}},
+};
+async function idDownloadTpl(key,extra){const spec=TPL_DOCS[key];if(!spec)return false;try{const v=Object.assign(tplValues(),extra||{});const rows=spec.rows?spec.rows():{};
+    saveBlob(await tplDocx(spec.tpl,v,rows),`${spec.title} — ${(S.objects[0]||{}).code||''}.docx`);
+    let d=idDoc(key);if(!d){d={key,type:'doc',title:spec.title,date:ISO(TODAY)};idState().docs.push(d)}if(!d.status||d.status==='none'||d.status==='draft')d.status='ready';render();toast('Файл Word по форме компании сохранён — откройте, проверьте и распечатайте')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}return true}
+/* акты согласования материалов — по одному на раздел сметы, одним файлом */
+async function idDownloadMatActs(){const secs=idSections();if(!secs.length){toast('Сначала загрузите смету');return}
+  try{const v=tplValues();const buf=await tplLoad('matact');const z=await JSZip.loadAsync(buf);const base=await z.file('word/document.xml').async('string');
+    const bodyOf=x=>x.slice(x.indexOf('<w:body>')+8,x.lastIndexOf('<w:sectPr'));
+    const parts=secs.map((s,i)=>bodyOf(tplFill(base,Object.assign({},v,{ACT_NO:String(i+1).padStart(2,'0'),SECTION:s.name}),{IT:s.items.map(it=>({NAME:it.name,UNIT:it.unit||'',QTY:it.qty!=null?String(it.qty):''}))})));
+    const xml=base.slice(0,base.indexOf('<w:body>')+8)+parts.join('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')+base.slice(base.lastIndexOf('<w:sectPr'));
+    z.file('word/document.xml',xml);const u8=await z.generateAsync({type:'uint8array'});saveBlob(new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`Акты согласования материалов (${secs.length}) — ${(S.objects[0]||{}).code||''}.docx`);
+    let d=idDoc('matact');if(!d){d={key:'matact',type:'doc',title:'Акты согласования материалов',date:ISO(TODAY)};idState().docs.push(d)}if(!d.status||d.status==='none')d.status='ready';render();toast(`Собрано ${secs.length} актов согласования по разделам сметы`)}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+/* АОСР по форме компании */
+function aosrValues(d){const v=tplValues();const s=idSettings();const st=(S.schedule?S.schedule.stages:[]).find(x=>'aosr:'+x.id===d.key);
+  return Object.assign(v,{AOSR_OBJECT:(s.object||v.OBJECT_CAP)+(v.CUSTOMER?' — '+v.CUSTOMER:'')+(v.ADDRESS?', '+v.ADDRESS:''),AOSR_NO:d.number,AOSR_DATE_LONG:ruLong(d.date),AOSR_WORKS:d.works||'',AOSR_PROJECT:d.project||'—',AOSR_MATERIALS:d.materials||'—',AOSR_PROOFS:d.proofs||'—',AOSR_START:ruD(d.start),AOSR_END:ruD(d.end),AOSR_NORMS:d.norms||'—',AOSR_NEXT:d.next||'—',AOSR_EXTRA:d.extra||'—',AOSR_ATTACH:d.attach||'—',COPIES:(s.copies||'3')+({'2':' (двух)','3':' (трёх)','4':' (четырёх)'}[s.copies||'3']||'')})}
+
+async function idDownload(key){try{if(key==='registry'){await idDownloadTpl('registry');return}const d=idDoc(key);if(!d)return;
+    const blob=await tplDocx('aosr',aosrValues(d),{});saveBlob(blob,`АОСР № ${d.number}. ${(d.works||'').split(' — ')[0].slice(0,60)}.docx`);if(d.status==='draft')d.status='ready';render();toast('АОСР по форме компании сохранён — откройте, проверьте и распечатайте')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
 async function idDownloadAll(){const docs=idState().docs.filter(d=>d.type==='АОСР').sort((a,b)=>+a.number-+b.number);if(!docs.length){toast('Сначала составьте хотя бы один АОСР');return}
-  try{const xml=docs.map((d,i)=>aosrXml(d)+(i<docs.length-1?'<w:p><w:r><w:br w:type="page"/></w:r></w:p>':'')).join('');saveBlob(await docxBlob(xml),`АОСР № ${docs[0].number}–${docs[docs.length-1].number} ${(S.objects[0]||{}).code||''} (одним файлом на печать).docx`);toast(`Собрано ${docs.length} АОСР одним файлом`)}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+  try{const buf=await tplLoad('aosr');const z=await JSZip.loadAsync(buf);const base=await z.file('word/document.xml').async('string');const bodyOf=x=>x.slice(x.indexOf('<w:body>')+8,x.lastIndexOf('<w:sectPr'));
+    const parts=docs.map(d=>bodyOf(tplFill(base,aosrValues(d),{})));const xml=base.slice(0,base.indexOf('<w:body>')+8)+parts.join('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')+base.slice(base.lastIndexOf('<w:sectPr'));
+    z.file('word/document.xml',xml);const u8=await z.generateAsync({type:'uint8array'});saveBlob(new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`АОСР № ${docs[0].number}–${docs[docs.length-1].number} ${(S.objects[0]||{}).code||''} (одним файлом на печать).docx`);toast(`Собрано ${docs.length} АОСР одним файлом`)}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
 /* ═══ Экран ═══ */
 function idView(){const o=S.objects[0];if(!o)return empty('Исполнительная документация появится вместе с объектом','Загрузите контракт и смету — система сама составит список нужных актов и журналов и заполнит их реквизитами.','Завести объект',"S.screen='wizard';S.step=2;render()");
   ensureSchedule();const s=idSettings();const id=idState();const req=idRequired();
@@ -1142,7 +1237,7 @@ function idView(){const o=S.objects[0];if(!o)return empty('Исполнител�
   const statusSel=(r,st)=>`<select onchange="idSetStatus('${r.key}',this.value)" style="height:30px;font-size:12.5px"><option value="none"${st==='none'?' selected':''}>нет</option><option value="draft"${st==='draft'?' selected':''}>черновик</option><option value="ready"${st==='ready'?' selected':''}>подготовлен</option><option value="signed"${st==='signed'?' selected':''}>подписан</option></select>`;
   return `<div class="grid g4">${stat('Документов в комплекте',need,'<span class="chip">по смете и графику</span>')}${stat('Готово',done,done===need?'<span class="chip ok">комплект закрыт</span>':`<span class="chip warn">осталось ${need-done}</span>`)}${stat('АОСР',req.filter(r=>r.group==='АОСР'&&idStatus(r)!=='skip').length,'<span class="chip">по одному на работу</span>')}${stat('Не требуется',cnt.skip||0,'<span class="chip">отмечено вручную</span>')}</div>
   <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Реквизиты для актов</div><div class="s">Заполняются один раз — подставляются во все АОСР и реестр</div></div><button class="btn sm" onclick="S.idSet=!S.idSet;render()">${S.idSet?'Свернуть':'Заполнить'}</button></div>
-    ${S.idSet?`<div style="padding:14px 20px;display:grid;gap:8px">${setRow('object','Объект','наименование работ — заказчик, адрес')}${setRow('builder','Застройщик (заказчик)','наименование, ОГРН, ИНН, адрес')}${setRow('contractor','Лицо, осуществляющее строительство','ваша компания: наименование, адрес, ОГРН, ИНН')}${setRow('designer','Проектировщик','«—», если проекта нет')}${setRow('repBuilder','Представитель заказчика','должность, ФИО, приказ')}${setRow('repContractor','Представитель подрядчика','должность, ФИО')}${setRow('repOrder','Приказ о назначении','№ и дата приказа')}${setRow('repControl','Строительный контроль','организация, должность, ФИО')}${setRow('repOther','Иные представители','')}${setRow('contract','Контракт','№ и дата')}${setRow('copies','Экземпляров акта','3')}</div>`:''}</div>
+    ${S.idSet?`<div style="padding:14px 20px;display:grid;gap:8px">${setRow('object','Объект (наименование работ)','Текущий ремонт помещений «…» здания «…»')}${setRow('address','Адрес объекта','индекс, город, улица, дом')}${setRow('builder','Заказчик — краткое наименование','как в шапке контракта')}${setRow('customerFull','Заказчик — полное наименование','для актов и ОЖР')}${setRow('customerReq','Заказчик — ОГРН, ИНН','ОГРН …, ИНН …')}${setRow('custPost','Руководитель заказчика — должность','Начальник / Директор')}${setRow('custFio','Руководитель заказчика — ФИО полностью','Фамилия Имя Отчество')}${setRow('companyFull','Ваша компания — полное наименование','ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «…» (ООО «…»)')}${setRow('contractDate','Дата контракта','дд.мм.гггг')}${setRow('orderDate','Дата приказов о назначении ответственных','дд.мм.гггг')}${setRow('controlOrg','Строительный контроль — организация','если есть')}${setRow('controlPost','Строительный контроль — должность','')}${setRow('controlFio','Строительный контроль — ФИО','')}${setRow('workKind','Вид работ (для ОЖР)','текущий (косметический) ремонт помещений')}${setRow('gsn','Госстройнадзор','Государственный строительный надзор за объектом не осуществляется (текущий ремонт).')}${setRow('contractor','Лицо, осуществляющее строительство','ваша компания: наименование, адрес, ОГРН, ИНН')}${setRow('designer','Проектировщик','«—», если проекта нет')}${setRow('repBuilder','Представитель заказчика','должность, ФИО, приказ')}${setRow('repContractor','Представитель подрядчика','должность, ФИО')}${setRow('repOrder','Приказ о назначении','№ и дата приказа')}${setRow('repControl','Строительный контроль','организация, должность, ФИО')}${setRow('repOther','Иные представители','')}${setRow('contract','Контракт','№ и дата')}${setRow('copies','Экземпляров акта','3')}</div>`:''}</div>
   <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Комплект исполнительной документации</div><div class="s">Список составлен по позициям сметы и графику. АОСР — на каждую работу; лишние отметьте «не требуется»</div></div>
     <div style="display:flex;gap:8px"><button class="btn sm" onclick="idDownloadAll()">Все АОСР одним файлом</button><button class="btn pri sm" onclick="idDownload('registry')">Реестр ИД в Word</button></div></div>
     <div style="overflow-x:auto"><table><thead><tr><th style="width:30px">№</th><th>документ</th><th>работы по графику</th><th>статус</th><th style="text-align:right">действие</th></tr></thead><tbody>
