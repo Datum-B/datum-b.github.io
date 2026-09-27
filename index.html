@@ -332,7 +332,7 @@ function parseLSR(rows){
     if(iO>=0&&iN>=0){hdr=i;cN=iN;cU=h.findIndex(c=>/единиц/.test(c));cQ=h.findIndex(c=>/количеств/.test(c));if(cU<0)cU=iN+1;if(cQ<0)cQ=iN+2;break}}
   if(hdr<0)return null;
   const lastNum=r=>{for(let k=r.length-1;k>=0;k--){const n=toNum(r[k]);if(n!=null)return n}return null};
-  const items=[],sections=[],extras=[];let cur=null,section='',subtotal=null,vat=null,vatNote='',grand=null,afterTotal=false;
+  const items=[],sections=[],extras=[];let cur=null,section='',subtotal=null,vat=null,vatNote='',grand=null,afterTotal=false;let lastRow=hdr,tailFrom=-1,grandRow=-1;
   const isHeader=r=>{const h=(r||[]).map(c=>String(c).toLowerCase());return h.some(c=>/обоснован/.test(c))&&h.some(c=>/наимен/.test(c))};
   for(let i=hdr+1;i<rows.length;i++){const r=rows[i]||[];const c0=String(r[0]||'').trim();const name=String(r[cN]||'').trim();
     /* вторая таблица (другой лист: материалы, ресурсы) — не часть расчёта */
@@ -341,19 +341,25 @@ function parseLSR(rows){
     const secM=c0.match(/^Раздел\s*(\d+)\.?\s*(.*)$/i);
     if(secM){section=(secM[2]||'').replace(/[<>]/g,'').trim()||('Раздел '+secM[1]);sections.push(section);cur=null;continue}
     if(r.length<=2&&c0&&toNum(c0)==null&&!/^(итого|всего|составил|проверил|\(|справочно)/i.test(c0)){section=c0;sections.push(section);continue}
-    if(/^\d+$/.test(c0)&&name&&toNum(name)==null){if(afterTotal&&+c0===1&&items.length>1)break;cur={num:+c0,section,code:String(r[1]||'').trim(),name:name.replace(/V=.*$/,'').replace(/\s+/g,' ').trim().slice(0,160),unit:String(r[cU]||'').trim()||'—',qty:toNum(r[cQ]),sum:lastNum(r)};items.push(cur);continue}
+    if(/^\d+$/.test(c0)&&name&&toNum(name)==null){if(afterTotal&&+c0===1&&items.length>1)break;cur={num:+c0,section,rowFrom:i,rowTo:i,code:String(r[1]||'').trim(),name:name.replace(/V=.*$/,'').replace(/\s+/g,' ').trim().slice(0,160),unit:String(r[cU]||'').trim()||'—',qty:toNum(r[cQ]),sum:lastNum(r)};items.push(cur);continue}
+    if(cur&&!afterTotal)cur.rowTo=i;
     if(/^Всего по позиции/i.test(name)&&cur){const n=lastNum(r);if(n!=null)cur.sum=n;continue}
-    if(/^(ВСЕГО по смете|Итого по разделам|ИТОГО по позициям|ИТОГО без НДС)/i.test(name)){const n=lastNum(r);if(n!=null)subtotal=n;afterTotal=true;continue}
+    if(/^(ВСЕГО по смете|Итого по разделам|ИТОГО по позициям|ИТОГО без НДС)/i.test(name)){const n=lastNum(r);if(n!=null)subtotal=n;if(!afterTotal)tailFrom=i;afterTotal=true;lastRow=i;continue}
+    if(afterTotal)lastRow=i;
     if(!afterTotal)continue;
     if(/^НДС/i.test(name)){const n=lastNum(r);if(n!=null&&!/не облагается/i.test(name))vat=n;else vatNote=name.replace(/\s+/g,' ').slice(0,80);continue}
-    if(/^(Итого|ВСЕГО)/i.test(name)){const n=lastNum(r);if(n!=null)grand=n;continue}
+    if(/^(Итого|ВСЕГО)/i.test(name)){const n=lastNum(r);if(n!=null){grand=n;grandRow=i}continue}
     if(/^(Прогнозный|Индекс|Коэффициент|Временн|Зимн|Непредвид|Лимитир)/i.test(name)){const n=lastNum(r);if(n!=null&&n!==0&&!/^(Всего|в том числе)/i.test(name))extras.push({name:name.replace(/\s+/g,' ').slice(0,90),sum:n})}}
   const good=items.filter(it=>it.sum!=null&&it.sum>0);if(good.length<2)return null;
   const posSum=good.reduce((a,b)=>a+b.sum,0);
   const extrasSum=extras.reduce((a,b)=>a+b.sum,0);
   const total=grand!=null?grand:(subtotal!=null?subtotal:posSum)+(grand==null?0:0);
   const expected=posSum+extrasSum+(vat||0);
-  return {kind:'lsr',items:good,sections:[...new Set(sections)],posSum,subtotal,extras,vat,vatNote,total,
+  /* строки сметы для КС-2: шапка (до заголовка таблицы), заголовок, блоки позиций, итоги */
+  const trim=r=>(r||[]).slice(0,12).map(c=>String(c==null?'':c).replace(/\s+/g,' ').trim());
+  const lsr={head:rows.slice(0,hdr).filter(r=>(r||[]).some(c=>String(c||'').trim())).map(trim),header:[trim(rows[hdr]),trim(rows[hdr+1]||[])],cN,cU,cQ,tail:tailFrom>0?rows.slice(tailFrom,(grandRow>tailFrom?grandRow:lastRow)+1).map(trim):[],blocks:{}};
+  good.forEach(it=>{lsr.blocks[it.num]=rows.slice(it.rowFrom,it.rowTo+1).map(trim);delete it.rowFrom;delete it.rowTo});
+  return {kind:'lsr',lsr,items:good,sections:[...new Set(sections)],posSum,subtotal,extras,vat,vatNote,total,
     consistent:Math.abs(total-expected)<1||Math.abs((subtotal!=null?subtotal:posSum)-posSum)<1&&grand==null,header:true};
 }
 function parseEstimate(rows){
@@ -414,7 +420,7 @@ async function onObjectFiles(files){
     for(const f of [...new Set(smetaCands)].slice(0,8)){
       try{const rows=['docx'].includes(ext(f.name))?await readDocxTables(f):await readXlsx(f);
         const r=parseLSR(rows)||parseEstimate(rows);
-        if(r.items.length>=3)found.push({file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections});
+        if(r.items.length>=3)found.push({file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',lsr:r.lsr||null,posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections});
       }catch(e){}
     }
     /* настоящий сметный расчёт важнее любой таблицы (ВОР, спецификации) */
@@ -448,7 +454,7 @@ async function onObjectFilesMore(files){
     if(!S.estimates.length){
       for(const f of files.filter(f=>['xlsx','xls','xlsm','csv','docx'].includes(ext(f.name)))){
         try{const rows=ext(f.name)==='docx'?await readDocxTables(f):await readXlsx(f);const r=parseLSR(rows)||parseEstimate(rows);
-          if(r.items.length>=3){S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections}];break}}catch(e){}
+          if(r.items.length>=3){S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',lsr:r.lsr||null,posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections}];break}}catch(e){}
       }
     }
     if(S.objects[0])S.objects[0].bundle=S.docs.length;
@@ -470,7 +476,7 @@ async function onEstimateFiles(files){const f=files[0];if(!f)return;
     else throw new Error('Смету читаем из Excel (.xlsx) или Word (.docx). Формат .'+e+' не поддержан.');
     const r=parseLSR(rows)||parseEstimate(rows);
     if(!r.items.length)throw new Error('Не нашёл позиций: в таблице нет колонки с наименованием и суммой. Проверьте, что это смета, а не пояснительная записка.');
-    S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections}];
+    S.estimates=[{file:f.name,items:r.items,total:r.total,header:r.header,kind:r.kind||'table',lsr:r.lsr||null,posSum:r.posSum,subtotal:r.subtotal,extras:r.extras,vat:r.vat,vatNote:r.vatNote,consistent:r.consistent,sections:r.sections}];
     done();toast(`Прочитано ${r.items.length} ${plural(r.items.length,'позиция','позиции','позиций')}`)}
   catch(e){fail(e.message||String(e))}}
 function estimateSample(){S.estimates=[{file:'пример · смета ЛС-1',header:true,items:[
@@ -1163,6 +1169,7 @@ function tplValues(){const s=idSettings();const o=S.objects[0]||{};const c=S.com
     CODE:o.code||'',ORDER_DATE:s.orderDate||s.contractDate||o.start||'',GSN:s.gsn||'Государственный строительный надзор за объектом не осуществляется (текущий ремонт).',COPIES:s.copies||'3',
     REP_BUILDER:s.repBuilder||'',REP_CONTRACTOR:s.repContractor+(s.repOrder?' Подрядчик, '+s.repOrder:''),REP_CONTRACTOR_SIGN:s.repContractor||'',REP_OTHER:s.repControl||'',
     ORDER_DATE_LONG:ruLong((s.orderDate||s.contractDate||o.start)?ISO(pdRu(s.orderDate||s.contractDate||o.start)):''),DIR_G_SHORT:(()=>{const m=fio.match(/^(\S+)\s+(\S)\S*\s*(\S)?/);return m?RU.fioGen(m[1])+' '+m[2]+'.'+(m[3]?m[3]+'.':''):RU.fioGen(fio)})(),
+    OKPO:s.okpo||'',CUSTOMER_OKPO:s.customerOkpo||'',
     NOTE1:'',NOTE2:''};
   return v}
 function xmlEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -1251,6 +1258,133 @@ async function idDownloadAll(){const docs=idState().docs.filter(d=>d.type==='А�
   try{const buf=await tplLoad('aosr');const z=await JSZip.loadAsync(buf);const base=await z.file('word/document.xml').async('string');const bodyOf=x=>x.slice(x.indexOf('<w:body>')+8,x.lastIndexOf('<w:sectPr'));
     const parts=docs.map(d=>bodyOf(tplFill(base,aosrValues(d),{})));const xml=base.slice(0,base.indexOf('<w:body>')+8)+parts.join('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')+base.slice(base.lastIndexOf('<w:sectPr'));
     z.file('word/document.xml',xml);const u8=await z.generateAsync({type:'uint8array',compression:'DEFLATE'});saveBlob(new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`АОСР № ${docs[0].number}–${docs[docs.length-1].number} ${(S.objects[0]||{}).code||''} (одним файлом на печать).docx`);toast(`Собрано ${docs.length} АОСР одним файлом`)}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+/* ═══ Приёмка и оплата: акт КС-2, справка КС-3, счёт на оплату — из сметы и факта по графику ═══ */
+function acts(){const id=idState();if(!id.acts)id.acts=[];return id.acts}
+const fmtRub=n=>(Math.round((n||0)*100)/100).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
+const num2=(n)=>Math.round(n*100)/100;
+/* сумма прописью */
+function rubWords(n){n=Math.round(n*100)/100;const rub=Math.floor(n),kop=Math.round((n-rub)*100);
+  const U=['','один','два','три','четыре','пять','шесть','семь','восемь','девять'],UF=['','одна','две'],T=['десять','одиннадцать','двенадцать','тринадцать','четырнадцать','пятнадцать','шестнадцать','семнадцать','восемнадцать','девятнадцать'],D=['','','двадцать','тридцать','сорок','пятьдесят','шестьдесят','семьдесят','восемьдесят','девяносто'],H=['','сто','двести','триста','четыреста','пятьсот','шестьсот','семьсот','восемьсот','девятьсот'];
+  const pl=(k,f)=>{const a=k%10,b=k%100;return b>=11&&b<=19?f[2]:a===1?f[0]:a>=2&&a<=4?f[1]:f[2]};
+  const tri=(k,fem)=>{const w=[];w.push(H[Math.floor(k/100)]);const r=k%100;if(r>=10&&r<20)w.push(T[r-10]);else{w.push(D[Math.floor(r/10)]);const u=r%10;w.push(fem&&u<3?UF[u]:U[u])}return w.filter(Boolean).join(' ')};
+  const parts=[];const groups=[[1e9,['миллиард','миллиарда','миллиардов'],false],[1e6,['миллион','миллиона','миллионов'],false],[1e3,['тысяча','тысячи','тысяч'],true]];let rest=rub;
+  groups.forEach(([v,f,fem])=>{const k=Math.floor(rest/v);if(k){parts.push(tri(k,fem)+' '+pl(k,f));rest=rest%v}});
+  if(rest||!parts.length)parts.push(tri(rest,false));
+  let s=parts.join(' ').replace(/\s+/g,' ').trim();s=s?s[0].toUpperCase()+s.slice(1):'Ноль';
+  return `${s} ${pl(rub,['рубль','рубля','рублей'])} ${String(kop).padStart(2,'0')} ${pl(kop,['копейка','копейки','копеек'])}`}
+/* доля выполнения позиции по графику */
+function actShareDefault(it){const st=(S.schedule?S.schedule.stages:[]).find(x=>x.name===it.name&&(x.code||'')===(it.code||''))||(S.schedule?S.schedule.stages:[])[it.num-1];if(!st)return 0;return st.actEnd||st.done>=100?100:(st.done||0)}
+function actNew(){const e=S.estimates[0];if(!e||!e.items||!e.items.length){toast('Сначала загрузите смету');return}
+  const list=acts();const prev=list[list.length-1];const sel={};const already={};list.forEach(a=>Object.entries(a.sel||{}).forEach(([k,v])=>already[k]=(already[k]||0)+v));
+  e.items.forEach(it=>{const s=actShareDefault(it)-(already[it.num]||0);if(s>0)sel[it.num]=Math.min(100,s)});
+  const st=S.schedule;const from=prev?prev.to:(st&&st.actStart)||(st&&st.stages[0]?st.stages[0].start:ISO(TODAY));
+  const a={id:'a'+Date.now(),no:String(list.length+1),date:ISO(TODAY),from,to:ISO(TODAY),sel,invNo:String(list.length+1),vatRate:e.vat?22:0,paid:0};
+  list.push(a);S.actEdit=a.id;render()}
+function actGet(id){return acts().find(a=>a.id===id)}
+function actSet(id,k,v){const a=actGet(id);if(!a)return;a[k]=v;render()}
+function actSel(id,num,v){const a=actGet(id);if(!a)return;v=Math.max(0,Math.min(100,parseFloat(v)||0));if(v)a.sel[num]=v;else delete a.sel[num];render()}
+function actDel(id){const id_=idState();id_.acts=acts().filter(a=>a.id!==id);S.actEdit=null;render()}
+/* расчёт акта: позиции × доля, начисления сверху пропорционально */
+function actCalc(a){const e=S.estimates[0];const items=[];let sum=0;
+  e.items.forEach(it=>{const sh=a.sel[it.num];if(!sh)return;const s=num2(it.sum*sh/100);items.push({it,share:sh,sum:s});sum+=s});
+  const ratio=e.posSum?sum/e.posSum:0;const extras=(e.extras||[]).map(x=>({name:x.name,sum:num2(x.sum*ratio)}));const extrasSum=extras.reduce((x,y)=>x+y.sum,0);
+  /* полный акт (все позиции на 100%) — цифры сметы копейка в копейку */
+  const full=e.items.every(it=>a.sel[it.num]>=100);
+  if(full){const ex=(e.extras||[]).map(x=>({name:x.name,sum:x.sum}));const exs=num2(ex.reduce((x,y)=>x+y.sum,0));const sm=num2(e.subtotal!=null?e.subtotal:e.posSum);const vt=e.vat||0;return {items,sum:sm,extras:ex,extrasSum:exs,base:num2(sm+exs),vat:vt,total:num2(e.total||sm+exs+vt),vatNote:e.vatNote||'',full:true}}
+  const base=num2(sum+extrasSum);const vat=e.vat?num2(e.vat*ratio):0;const total=num2(base+vat);
+  return {items,sum:num2(sum),extras,extrasSum:num2(extrasSum),base,vat,total,vatNote:e.vatNote||''}}
+function xlsxSave(wb,name){if(!window.XLSX){toast('Модуль Excel ещё загружается — подождите пару секунд');return}XLSX.writeFile(wb,name)}
+const cellStr=v=>v==null?'':v;
+/* КС-2 — унифицированная форма (ОКУД 0322005), тело — как в смете: блоки позиций с ресурсами */
+function ks2Workbook(a){const e=S.estimates[0];const v=tplValues();const c=actCalc(a);const L=e.lsr;const rows=[];const merges=[];const R=(arr)=>{rows.push(arr);return rows.length-1};
+  const M=(r1,c1,r2,c2)=>merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}});
+  R([]);R(['','','','','','','','Унифицированная форма № КС-2']);R(['','','','','','','','Утверждена Постановлением Госкомстата России']);R(['','','','','','','','от 11 ноября 1999 г. № 100']);R([]);
+  R(['','','','','','','','','','Код']);R(['','','','','','','Форма по ОКУД','','','0322005']);
+  R(['Инвестор :','','','','','','по ОКПО']);
+  let r=R(['Заказчик :','',v.CUSTOMER_FULL||v.CUSTOMER,'','','','по ОКПО','','',v.CUSTOMER_OKPO||'']);M(r,2,r,5);
+  r=R(['Подрядчик :','',v.COMPANY+', '+v.COMPANY_ADDR,'','','','по ОКПО','','',v.OKPO||'']);M(r,2,r,5);
+  r=R(['Стройка :','',v.OBJECT_CAP]);M(r,2,r,5);
+  r=R(['Объект :','',v.CUSTOMER+', '+v.ADDRESS]);M(r,2,r,5);
+  R(['','','','','','','Вид деятельности по ОКДП']);
+  R(['','','','Договор подряда (контракт)','','','','','номер',v.CONTRACT_NO]);
+  R(['','','','','','','','','дата',v.CONTRACT_DATE]);
+  R(['','','','','','','Вид операции']);R([]);
+  R(['','','','Номер документа','Дата составления','','Отчетный период']);R(['','','','','','','с','по']);
+  R(['','','АКТ',a.no,ruLong(a.date).replace(/[«»]/g,''),'',ruLong(a.from).replace(/[«»]/g,''),ruLong(a.to).replace(/[«»]/g,'')]);
+  r=R(['О ПРИЕМКЕ ВЫПОЛНЕННЫХ РАБОТ']);M(r,0,r,11);R([]);
+  r=R([(e.file?'Локальная смета — '+e.file.replace(/\.(docx|xlsx|pdf)$/i,''):'Локальный сметный расчёт')+'. '+v.OBJECT_CAP]);M(r,0,r,11);
+  if(L&&L.header){L.header.forEach(h=>R(h.map(cellStr)))}else{R(['№ п.п.','Обоснование','Наименование работ и затрат','Единица измерения','Количество','','','Сметная стоимость, руб.']);R(['','','','','на единицу измерения','коэффициенты','всего с учетом коэффициентов','на единицу измерения в базисном уровне цен','индекс','на единицу измерения в текущем уровне цен','коэффициенты','всего в текущем уровне цен'])}
+  R(['1','2','3','4','5','6','7','8','9','10','11','12']);
+  let curSec='';c.items.forEach(({it,share,sum})=>{if(it.section&&it.section!==curSec){curSec=it.section;r=R([curSec]);M(r,0,r,11)}
+    const blk=L&&L.blocks&&L.blocks[it.num];
+    if(blk&&share>=100){blk.forEach(row=>R(row.map(cellStr)))}
+    else if(blk){const first=blk[0].map(cellStr);const q=it.qty!=null?num2(it.qty*share/100):'';R([first[0],first[1],first[2]+' (выполнено '+share+'%)',first[3],q,'',q,'','','','',sum]);R(['','','Всего по позиции','','','','','','','','',sum])}
+    else{const q=it.qty!=null?num2(it.qty*share/100):'';R([it.num,it.code||'',it.name+(share<100?' (выполнено '+share+'%)':''),it.unit||'',q,'',q,'','','','',sum])}});
+  R([]);
+  if(c.full&&L&&L.tail&&L.tail.length){L.tail.forEach(row=>R(row.map(cellStr)))}
+  else{r=R(['','','Итого по позициям акта','','','','','','','','',c.sum]);
+  c.extras.forEach(x=>{R(['','',x.name,'','','','','','','','',x.sum])});
+  R(['','','Итого','','','','','','','','',c.base]);
+  if(c.vat)R(['','','НДС '+(a.vatRate||'')+'%','','','','','','','','',c.vat]);else R(['','',c.vatNote||'НДС не облагается','','','','','','','','','—']);
+  R(['','','ВСЕГО по акту','','','','','','','','',c.total])}
+  R([]);R([]);R(['Заказчик','','','','','','Подрядчик']);R([v.CUST_HEAD_POST,'','','','','',v.POST]);R([v.CUSTOMER,'','','','','',v.COMPANY]);R([]);R(['______________________ / '+v.CUST_HEAD_R,'','','','','','______________________ / '+v.DIR_R]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!merges']=merges;ws['!cols']=[6.2,15.5,40,9.3,10.9,10.9,10.9,10.8,9.3,10.9,10.9,12].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'КС-2');return wb}
+/* КС-3 — справка о стоимости (ОКУД 0322001) */
+function ks3Workbook(a){const v=tplValues();const c=actCalc(a);const list=acts();const before=list.filter(x=>x.id!==a.id&&x.date<=a.date).map(actCalc);const cum=num2(before.reduce((x,y)=>x+y.base,0)+c.base);
+  const yr=a.date.slice(0,4);const cumYear=num2(before.filter((x,i)=>list[i]&&list[i].date&&list[i].date.startsWith(yr)).reduce((x,y)=>x+y.base,0)+c.base);
+  const rows=[];const merges=[];const R=arr=>{rows.push(arr);return rows.length-1};const M=(r1,c1,r2,c2)=>merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}});
+  R([]);R(['','Унифицированная форма № КС-3']);R(['','Утверждена Постановлением Госкомстата России']);R(['','от 11 ноября 1999 г. № 100']);R([]);
+  R(['','','','','','Код']);R(['','','Форма по ОКУД','','','0322001']);R(['Инвестор :','','по ОКПО']);
+  let r=R(['Заказчик :',v.CUSTOMER_FULL||v.CUSTOMER,'по ОКПО','','',v.CUSTOMER_OKPO||'']);
+  R(['Подрядчик :',v.COMPANY+', '+v.COMPANY_ADDR,'по ОКПО','','',v.OKPO||'']);R(['Стройка :',v.OBJECT_CAP]);R(['Объект :',v.CUSTOMER+', '+v.ADDRESS]);
+  R(['','','Вид деятельности по ОКДП']);R(['Договор подряда (контракт)','','','','номер',v.CONTRACT_NO]);R(['','','','','дата',v.CONTRACT_DATE]);R(['','','Вид операции']);R([]);
+  R(['','','Номер документа','Дата составления','Отчетный период']);R(['','','','','с','по']);
+  R(['','СПРАВКА',a.no,ruLong(a.date).replace(/[«»]/g,''),ruLong(a.from).replace(/[«»]/g,''),ruLong(a.to).replace(/[«»]/g,'')]);
+  r=R(['О СТОИМОСТИ ВЫПОЛНЕННЫХ РАБОТ И ЗАТРАТ']);M(r,0,r,5);R([]);
+  R(['Номер по порядку','Наименование пусковых комплексов, этапов, объектов, видов выполненных работ, оборудования, затрат','Код','Стоимость выполненных работ и затрат, руб.']);M(rows.length-1,3,rows.length-1,5);
+  R(['','','','с начала проведения работ','с начала года','в том числе за отчетный период']);R(['1','2','3','4','5','6']);
+  R(['1','Всего работ и затрат, включаемых в стоимость работ','',cum,cumYear,c.base]);R(['','в том числе:']);
+  R(['1.1','Акт выполненных работ № '+a.no+' ('+v.OBJECT+')','',cum,cumYear,c.base]);
+  R(['Итого','','','','',c.base]);R(['Сумма НДС','','','','',c.vat||0]);R(['Всего с учетом НДС','','','','',c.total]);
+  if(!c.vat)R(['',c.vatNote||'НДС не облагается — Подрядчик применяет УСН (гл. 26.2 НК РФ)']);
+  R([]);R(['','','','','Предоплата',a.paid||0]);R(['','','','','Всего',num2(c.total-(a.paid||0))]);R([]);R([]);
+  R(['Заказчик','','','Подрядчик']);R([v.CUST_HEAD_POST,'','',v.POST]);R([v.CUSTOMER,'','',v.COMPANY]);R([]);R(['______________________ / '+v.CUST_HEAD_R,'','','______________________ / '+v.DIR_R]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!merges']=merges;ws['!cols']=[14,52,10,18,16,20].map(w=>({wch:w}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'КС-3');return wb}
+function actDownload(id,kind){const a=actGet(id);if(!a)return;if(!Object.keys(a.sel).length){toast('В акте нет ни одной позиции');return}
+  const code=(S.objects[0]||{}).code||'';
+  if(kind==='ks2'){xlsxSave(ks2Workbook(a),`КС-2 № ${a.no} — ${code}.xlsx`);toast('КС-2 сохранён в Excel')}
+  else if(kind==='ks3'){xlsxSave(ks3Workbook(a),`КС-3 № ${a.no} — ${code}.xlsx`);toast('КС-3 сохранена в Excel')}
+  else if(kind==='inv'){actInvoice(a)}}
+async function actInvoice(a){try{const v=tplValues();const s=idSettings();const c=actCalc(a);const cust=[s.customerInn?'ИНН '+s.customerInn:'',s.customerKpp?'КПП '+s.customerKpp:'',s.customerAddr||''].filter(Boolean).join(', ');
+    Object.assign(v,{BANK:s.bank||'',BIK:s.bik||'',CORR:s.corr||'',RS:s.rs||'',INV_NO:a.invNo||a.no,INV_DATE:ruLong(a.date).replace(/[«»]/g,''),CUSTOMER_REQ_INV:cust?', '+cust:'',IKZ:s.ikz?' ИКЗ '+s.ikz:'',
+      INV_ITEM:'Выполнение работ: '+v.OBJECT+' (акт КС-2 № '+a.no+' от '+ruD(a.date)+')',INV_SUM:fmtRub(c.base),INV_TOTAL:fmtRub(c.total),INV_VAT_LABEL:c.vat?'НДС '+(a.vatRate||'')+'%':'Без налога (НДС)',INV_VAT:c.vat?fmtRub(c.vat):'—',INV_WORDS:rubWords(c.total),
+      INV_VAT_NOTE:c.vat?'':'НДС не облагается: поставщик применяет упрощённую систему налогообложения (ст. 346.11 НК РФ).'});
+    saveBlob(await tplDocx('invoice',v,{}),`Счёт на оплату № ${v.INV_NO} — ${(S.objects[0]||{}).code||''}.docx`);toast('Счёт по форме компании сохранён')}catch(e){toast('Не удалось собрать счёт: '+(e.message||e))}}
+/* ═══ экран ═══ */
+function actsView(){const e=S.estimates[0];const list=acts();const s=idSettings();
+  const bankRow=(k,l,ph)=>`<div class="row3"><span class="eyebrow">${l}</span><input value="${esc(s[k]||'')}" placeholder="${ph||''}" onchange="idSet('${k}',this.value)"><span></span></div>`;
+  const head=`<div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Приёмка и оплата: КС-2, КС-3, счёт</div><div class="s">Акт собирается из сметы и факта по графику; КС-3 и счёт считаются от акта</div></div><div style="display:flex;gap:8px"><button class="btn sm" onclick="S.actBank=!S.actBank;render()">${S.actBank?'Скрыть реквизиты':'Банк и реквизиты для счёта'}</button><button class="btn pri sm" onclick="actNew()">＋ Новый акт</button></div></div>
+    ${S.actBank?`<div style="padding:14px 20px;display:grid;gap:8px">${bankRow('bank','Банк','ООО «Банк Точка», г. Москва')}${bankRow('bik','БИК','')}${bankRow('corr','Корр. счёт','')}${bankRow('rs','Расчётный счёт','')}${bankRow('customerInn','Заказчик — ИНН','')}${bankRow('customerKpp','Заказчик — КПП','')}${bankRow('customerAddr','Заказчик — адрес','')}${bankRow('ikz','ИКЗ (если указывается в счёте)','')}${bankRow('okpo','ОКПО (для КС-2/КС-3)','')}</div>`:''}`;
+  if(!e||!e.items||!e.items.length)return head+`<div style="padding:16px 20px;font-size:13.5px;color:var(--ink-500)">Загрузите смету — акты собираются из её позиций.</div></div>`;
+  if(S.actEdit){const a=actGet(S.actEdit);if(a){const c=actCalc(a);
+    return head+`<div style="padding:16px 20px">
+      <div style="display:grid;grid-template-columns:100px 170px 170px 170px 110px 1fr;gap:12px;align-items:end">
+        <div class="field"><span class="eyebrow">№ акта</span><input value="${esc(a.no)}" onchange="actSet('${a.id}','no',this.value)"></div>
+        <div class="field"><span class="eyebrow">Дата акта</span><input type="date" value="${a.date}" onchange="actSet('${a.id}','date',this.value)"></div>
+        <div class="field"><span class="eyebrow">Период с</span><input type="date" value="${a.from}" onchange="actSet('${a.id}','from',this.value)"></div>
+        <div class="field"><span class="eyebrow">по</span><input type="date" value="${a.to}" onchange="actSet('${a.id}','to',this.value)"></div>
+        <div class="field"><span class="eyebrow">№ счёта</span><input value="${esc(a.invNo||'')}" onchange="actSet('${a.id}','invNo',this.value)"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn sm" onclick="S.actEdit=null;render()">← К списку</button><button class="btn sm pri" onclick="actDownload('${a.id}','ks2')">КС-2 Excel</button><button class="btn sm pri" onclick="actDownload('${a.id}','ks3')">КС-3 Excel</button><button class="btn sm pri" onclick="actDownload('${a.id}','inv')">Счёт Word</button></div></div>
+      <div class="grid g4" style="margin-top:14px">${stat('Позиции в акте',rub(c.sum),'<span class="chip">'+c.items.length+' из '+e.items.length+'</span>')}${stat('Начисления',rub(c.extrasSum),c.extras.map(x=>'<span class="chip">'+esc(x.name.slice(0,30))+'</span>').join(' ')||'<span class="chip">нет</span>')}${stat(c.vat?'НДС':'НДС','—'===c.vat?'—':rub(c.vat),c.vat?'':'<span class="chip">не облагается</span>')}${stat('Всего по акту',rub(c.total),'<span class="chip ok">в КС-3 и счёт</span>')}</div>
+      <div class="box rise" style="margin-top:14px"><div style="overflow-x:auto;max-height:520px"><table><thead><tr><th style="width:30px">№</th><th>позиция сметы</th><th style="text-align:right">по смете</th><th>по графику</th><th style="width:110px">в акт, %</th><th style="text-align:right">в акт, ₽</th></tr></thead><tbody>
+        ${e.items.map(it=>{const sh=a.sel[it.num]||0;const df=actShareDefault(it);const secRow=(it.section&&(e.items.indexOf(it)===0||e.items[e.items.indexOf(it)-1].section!==it.section))?`<tr><td colspan="6" style="background:var(--surface);font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 12px">${esc(it.section).toUpperCase()}</td></tr>`:'';
+          return secRow+`<tr style="${sh?'':'opacity:.6'}"><td class="num" style="color:var(--ink-300);font-size:12px">${it.num}</td><td style="font-size:13.5px;font-weight:600">${esc(it.name)}<div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(it.code||'')}${it.qty?' · '+qtyText(it.qty,it.unit):''}</div></td><td class="num" style="text-align:right">${rub(it.sum)}</td><td><span class="chip ${df>=100?'ok':df>0?'warn':''}">${df>=100?'выполнена':df>0?df+'%':'не начата'}</span></td><td><div style="display:flex;align-items:center;gap:4px"><input type="number" min="0" max="100" step="5" value="${sh}" onchange="actSel('${a.id}',${it.num},this.value)" style="width:70px">%</div></td><td class="num" style="text-align:right;font-weight:600">${sh?rub(it.sum*sh/100):'—'}</td></tr>`}).join('')}
+      </tbody></table></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px"><span style="font-size:12px;color:var(--ink-500)">КС-2 повторяет структуру сметы (ресурсы, НР, СП по каждой позиции) для позиций, включённых на 100%; частично выполненные — одной строкой с долей. Начисления (индекс-дефлятор) и НДС — пропорционально.</span><button class="btn sm ghost" style="color:var(--danger)" onclick="if(confirm('Удалить акт?'))actDel('${a.id}')">Удалить акт</button></div></div></div>`}}
+  return head+`<div style="padding:6px 20px 14px">${list.length?`<table><thead><tr><th>акт</th><th>период</th><th style="text-align:right">позиции</th><th style="text-align:right">всего по акту</th><th style="text-align:right">документы</th></tr></thead><tbody>${list.map(a=>{const c=actCalc(a);return `<tr><td style="font-weight:600">КС-2 № ${esc(a.no)} от ${ruD(a.date)}</td><td class="num" style="font-size:13px">${ruD(a.from)} — ${ruD(a.to)}</td><td class="num" style="text-align:right">${c.items.length}</td><td class="num" style="text-align:right;font-weight:600">${rub(c.total)}</td><td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="S.actEdit='${a.id}';render()">Открыть</button> <button class="btn sm" onclick="actDownload('${a.id}','ks2')">КС-2</button> <button class="btn sm" onclick="actDownload('${a.id}','ks3')">КС-3</button> <button class="btn sm" onclick="actDownload('${a.id}','inv')">Счёт</button></td></tr>`}).join('')}</tbody></table>`:`<div style="font-size:13.5px;color:var(--ink-500)">Актов ещё нет. Нажмите «Новый акт» — в него попадут выполненные по графику позиции сметы.</div>`}</div></div>`}
+
 /* ═══ Экран ═══ */
 function idView(){const o=S.objects[0];if(!o)return empty('Исполнительная документация появится вместе с объектом','Загрузите контракт и смету — система сама составит список нужных актов и журналов и заполнит их реквизитами.','Завести объект',"S.screen='wizard';S.step=2;render()");
   ensureSchedule();const s=idSettings();const id=idState();const req=idRequired();
@@ -1270,6 +1404,7 @@ function idView(){const o=S.objects[0];if(!o)return empty('Исполнител�
   return `<div class="grid g4">${stat('Документов в комплекте',need,'<span class="chip">по смете и графику</span>')}${stat('Готово',done,done===need?'<span class="chip ok">комплект закрыт</span>':`<span class="chip warn">осталось ${need-done}</span>`)}${stat('АОСР',req.filter(r=>r.group==='АОСР'&&idStatus(r)!=='skip').length,'<span class="chip">по одному на работу</span>')}${stat('Не требуется',cnt.skip||0,'<span class="chip">отмечено вручную</span>')}</div>
   <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Реквизиты для актов</div><div class="s">Заполняются один раз — подставляются во все АОСР и реестр</div></div><button class="btn sm" onclick="S.idSet=!S.idSet;render()">${S.idSet?'Свернуть':'Заполнить'}</button></div>
     ${S.idSet?`<div style="padding:14px 20px;display:grid;gap:8px">${setRow('object','Объект (наименование работ)','Текущий ремонт помещений «…» здания «…»')}${setRow('address','Адрес объекта','индекс, город, улица, дом')}${setRow('builder','Заказчик — краткое наименование','как в шапке контракта')}${setRow('customerFull','Заказчик — полное наименование','для актов и ОЖР')}${setRow('customerReq','Заказчик — ОГРН, ИНН','ОГРН …, ИНН …')}${setRow('custPost','Руководитель заказчика — должность','Начальник / Директор')}${setRow('custFio','Руководитель заказчика — ФИО полностью','Фамилия Имя Отчество')}${setRow('companyFull','Ваша компания — полное наименование','ОБЩЕСТВО С ОГРАНИЧЕННОЙ ОТВЕТСТВЕННОСТЬЮ «…» (ООО «…»)')}${setRow('contractDate','Дата контракта','дд.мм.гггг')}${setRow('orderDate','Дата приказов о назначении ответственных','дд.мм.гггг')}${setRow('controlOrg','Строительный контроль — организация','если есть')}${setRow('controlPost','Строительный контроль — должность','')}${setRow('controlFio','Строительный контроль — ФИО','')}${setRow('workKind','Вид работ (для ОЖР)','текущий (косметический) ремонт помещений')}${setRow('gsn','Госстройнадзор','Государственный строительный надзор за объектом не осуществляется (текущий ремонт).')}${setRow('contractor','Лицо, осуществляющее строительство','ваша компания: наименование, адрес, ОГРН, ИНН')}${setRow('designer','Проектировщик','«—», если проекта нет')}${setRow('repBuilder','Представитель заказчика','должность, ФИО, приказ')}${setRow('repContractor','Представитель подрядчика','должность, ФИО')}${setRow('repOrder','Приказ о назначении','№ и дата приказа')}${setRow('repControl','Строительный контроль','организация, должность, ФИО')}${setRow('repOther','Иные представители','')}${setRow('contract','Контракт','№ и дата')}${setRow('copies','Экземпляров акта','3')}</div>`:''}</div>
+  ${actsView()}
   <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Комплект исполнительной документации</div><div class="s">Список составлен по позициям сметы и графику. АОСР — на каждую работу; лишние отметьте «не требуется»</div></div>
     <div style="display:flex;gap:8px"><button class="btn sm" onclick="idDownloadAll()">Все АОСР одним файлом</button><button class="btn pri sm" onclick="idDownload('registry')">Реестр ИД в Word</button></div></div>
     <div style="overflow-x:auto"><table><thead><tr><th style="width:30px">№</th><th>документ</th><th>работы по графику</th><th>статус</th><th style="text-align:right">действие</th></tr></thead><tbody>
