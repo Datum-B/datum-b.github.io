@@ -927,7 +927,11 @@ function idRequired(){const st=(S.schedule&&S.schedule.stages)||[];const list=[]
   st.forEach((x,i)=>list.push({key:'aosr:'+x.id,group:'АОСР',title:'АОСР — '+x.name,stage:x,order:i+1}));
   const secs=new Set(st.map(x=>(x.section||'').toLowerCase()));const hasEl=[...secs].some(s=>/электро/.test(s));
   const lib=['transfer','notice','itr','schedule','journal','incontrol','jvv','jot','jpb','jsiz','jtool','jtime','materials','matact','certs'].concat(hasEl?['eltech']:[]).concat(['equip','accept','handover','noenergy']);
+  ['ord_ПР','ord_ИД','ord_ОТ','ord_ПБ','ord_ПРР','ord_СК','ord_ПК','ord_ЭБ','ord_СИЗ','ord_РЖ'].forEach(k=>list.push({key:k,group:'Приказы',title:TPL_DOCS[k].title,lib:true}));
   lib.forEach(k=>list.push({key:k,group:DOCS[k].group,title:DOCS[k].title,lib:true}));
+  ['iot','fire','briefing'].forEach(k=>list.push({key:k,group:'Охрана труда',title:TPL_DOCS[k].title,lib:true}));
+  list.push({key:'vor1',group:'ВОР для бригады',title:'ВОР № 1 — отделочные работы (для бригады)',lib:true},{key:'vor3',group:'ВОР для бригады',title:'ВОР № 3 — все работы по объекту (сводная)',lib:true});if(hasEl)list.push({key:'vor2',group:'ВОР для бригады',title:'ВОР № 2 — электромонтажные работы (для бригады)',lib:true});
+  list.push({key:'memo',group:'Памятки',title:TPL_DOCS.memo.title,lib:true});
   list.push({key:'registry',group:'Реестр',title:'Реестр исполнительной документации'});
   return list}
 function idDoc(key){return idState().docs.find(d=>d.key===key)}
@@ -998,7 +1002,8 @@ async function docxBlob(bodyXml,opts={}){if(!window.JSZip)throw new Error('Мо�
   z.file('word/document.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${bodyXml}<w:sectPr>${opts.landscape?'<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="850" w:right="850" w:bottom="850" w:left="1134" w:header="708" w:footer="708" w:gutter="0"/>':'<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="1418" w:header="708" w:footer="708" w:gutter="0"/>'}</w:sectPr></w:body></w:document>`);
   const u8=await z.generateAsync({type:'uint8array',compression:'DEFLATE'});return new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})}
 function saveBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},800)}
-const ruLong=iso=>{const d=fromISO(iso);return d?`«${String(d.getDate()).padStart(2,'0')}» ${d.toLocaleDateString('ru-RU',{month:'long'})} ${d.getFullYear()} г.`:'«____» ______________ 20___ г.'};
+const RU_MONTHS=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+const ruLong=iso=>{const d=fromISO(iso);return d?`«${String(d.getDate()).padStart(2,'0')}» ${RU_MONTHS[d.getMonth()]} ${d.getFullYear()} г.`:'«____» ______________ 20___ г.'};
 const CAP_ORG='(фамилия, имя, отчество, адрес места жительства, ОРГНИП, ИНН индивидуального предпринимателя, наименование, ОГРН, ИНН, место нахождения юридического лица, телефон/факс)';
 const CAP_REP='(должность, фамилия, инициалы, реквизиты распорядительного документа, подтверждающего полномочия)';
 function aosrXml(d){const s=idSettings();const rep=(label,v,cap)=>dp(label,{sz:20,after:0})+dline(v,cap||CAP_REP);const contr=s.repContractor+(s.repOrder?', '+s.repOrder:'');
@@ -1118,7 +1123,7 @@ const DOCS={
     return landscape(dtable([[`СОГЛАСОВАНО\nПодрядчик: ${x.company}\n${x.post} ______________ ${shortFio(x.fio)}\n«____» ______________ 20___ г.`,`УТВЕРЖДАЮ\nЗаказчик: ${x.customer}\n______________ /______________/\n«____» ______________ 20___ г.`]],[7500,7500],true)+dp('',{after:120})+dp('ГРАФИК ПРОИЗВОДСТВА РАБОТ',{b:true,jc:'center',sz:28,after:0})+dp('(календарный план выполнения работ)',{jc:'center',after:160})+dp('Объект: '+x.object+'.')+dp('Государственный контракт '+x.contract+'. Основание: локальный сметный расчёт.')+dp('Срок выполнения работ: с '+(x.start||'____')+' по '+(x.end||'____')+'.',{after:160})+dtable(rows,[500,5200].concat(weeks.map(()=>Math.max(700,Math.floor(9300/Math.max(1,weeks.length))))))+dp('',{after:120})+dp('Примечания: начало работ — с даты подписания акта передачи объекта; скрытые работы предъявляются Заказчику до закрытия последующими работами с оформлением АОСР; календарный план может корректироваться по согласованию Сторон без изменения общего срока и цены Контракта.',{sz:20}))}}
 };
 function idSections(){const e=S.estimates[0];if(!e||!e.items)return [];const map=new Map();e.items.forEach(it=>{const k=it.section||'Работы';if(!map.has(k))map.set(k,[]);map.get(k).push(it)});return [...map.entries()].map(([name,items])=>({name,items}))}
-async function idDownloadLib(key){if(key==='matact'){await idDownloadMatActs();return}if(TPL_DOCS[key]){await idDownloadTpl(key);return}const spec=DOCS[key];if(!spec)return;try{const x=idCtx();const st=S.schedule?S.schedule.stages:[];x.startISO=S.schedule&&S.schedule.actStart?S.schedule.actStart:(st[0]?st[0].start:ISO(TODAY));const fa=st.map(s=>fromISO(s.actStart)).filter(Boolean),fe=st.filter(s=>s.actEnd).map(s=>fromISO(s.actEnd));x.startFact=fa.length?ruD(ISO(new Date(Math.min(...fa)))):'';x.endFact=(fe.length&&st.every(s=>s.actEnd))?ruD(ISO(new Date(Math.max(...fe)))):'';
+async function idDownloadLib(key){if(/^vor[123]$/.test(key)){await idDownloadVor(+key[3]);return}if(key==='matact'){await idDownloadMatActs();return}if(TPL_DOCS[key]){await idDownloadTpl(key);return}const spec=DOCS[key];if(!spec)return;try{const x=idCtx();const st=S.schedule?S.schedule.stages:[];x.startISO=S.schedule&&S.schedule.actStart?S.schedule.actStart:(st[0]?st[0].start:ISO(TODAY));const fa=st.map(s=>fromISO(s.actStart)).filter(Boolean),fe=st.filter(s=>s.actEnd).map(s=>fromISO(s.actEnd));x.startFact=fa.length?ruD(ISO(new Date(Math.min(...fa)))):'';x.endFact=(fe.length&&st.every(s=>s.actEnd))?ruD(ISO(new Date(Math.max(...fe)))):'';
     let r=spec.xml(x);const opts=typeof r==='object'?r:{body:r};saveBlob(await docxBlob(opts.body,opts),`${spec.title} — ${(S.objects[0]||{}).code||''}.docx`);
     let d=idDoc(key);if(!d){d={key,type:'doc',title:spec.title,date:ISO(TODAY)};idState().docs.push(d)}if(!d.status||d.status==='none'||d.status==='draft')d.status='ready';render();toast('Файл Word сохранён — откройте, проверьте и распечатайте')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
 
@@ -1157,6 +1162,7 @@ function tplValues(){const s=idSettings();const o=S.objects[0]||{};const c=S.com
     START:ruD(startISO),START_LONG:ruLong(startISO),END:endISO?ruD(endISO):(o.end||''),END_LONG:ruLong(endISO),
     CODE:o.code||'',ORDER_DATE:s.orderDate||s.contractDate||o.start||'',GSN:s.gsn||'Государственный строительный надзор за объектом не осуществляется (текущий ремонт).',COPIES:s.copies||'3',
     REP_BUILDER:s.repBuilder||'',REP_CONTRACTOR:s.repContractor+(s.repOrder?' Подрядчик, '+s.repOrder:''),REP_CONTRACTOR_SIGN:s.repContractor||'',REP_OTHER:s.repControl||'',
+    ORDER_DATE_LONG:ruLong((s.orderDate||s.contractDate||o.start)?ISO(pdRu(s.orderDate||s.contractDate||o.start)):''),DIR_G_SHORT:(()=>{const m=fio.match(/^(\S+)\s+(\S)\S*\s*(\S)?/);return m?RU.fioGen(m[1])+' '+m[2]+'.'+(m[3]?m[3]+'.':''):RU.fioGen(fio)})(),
     NOTE1:'',NOTE2:''};
   return v}
 function xmlEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
@@ -1193,6 +1199,20 @@ const TPL_DOCS={
   accept:{tpl:'accept',title:'Акт приёмки объекта в эксплуатацию'},
   handover:{tpl:'handover',title:'Акт сдачи объекта в эксплуатацию'},
   noenergy:{tpl:'noenergy',title:'Акт об отсутствии потребления энергоресурсов Заказчика'},
+  ord_ПР:{tpl:'ord_ПР',title:'Приказ ПР — ответственный за производство работ'},
+  ord_ИД:{tpl:'ord_ИД',title:'Приказ ИД — ответственный за ведение исполнительной документации'},
+  ord_ОТ:{tpl:'ord_ОТ',title:'Приказ ОТ — ответственный за охрану труда'},
+  ord_ПБ:{tpl:'ord_ПБ',title:'Приказ ПБ — ответственный за пожарную безопасность'},
+  ord_ПРР:{tpl:'ord_ПРР',title:'Приказ ПРР — установление противопожарного режима'},
+  ord_СК:{tpl:'ord_СК',title:'Приказ СК — ответственный за строительный контроль'},
+  ord_ПК:{tpl:'ord_ПК',title:'Приказ ПК — организация производственного контроля качества'},
+  ord_ЭБ:{tpl:'ord_ЭБ',title:'Приказ ЭБ — ответственный за электробезопасность'},
+  ord_СИЗ:{tpl:'ord_СИЗ',title:'Приказ СИЗ — обеспечение работников СИЗ'},
+  ord_РЖ:{tpl:'ord_РЖ',title:'Приказ РЖ — соблюдение режима учреждения'},
+  iot:{tpl:'iot',title:'Инструкции по охране труда (ИОТ № 1–6)'},
+  fire:{tpl:'fire',title:'Инструкция о мерах пожарной безопасности на объекте'},
+  briefing:{tpl:'briefing',title:'Программы вводного и первичного инструктажей'},
+  memo:{tpl:'memo',title:'Памятка прорабу — СП, технадзор, приёмка'},
   registry:{tpl:'registry',title:'Реестр исполнительной документации',rows:()=>{const s=idSettings();const req=idRequired();const id=idState();const items=[];
     req.filter(r=>r.group==='АОСР'&&!id.skip[r.key]).forEach(r=>{const d=idDoc(r.key);items.push({NAME:`Акт освидетельствования скрытых работ № ${d?d.number:'__'}. ${r.stage.name}`,DATE:d&&d.date?ruD(d.date):'__________',COPIES:s.copies||'3'})});
     items.push({NAME:'Реестр документов о качестве (сертификаты соответствия, декларации, паспорта) на применённые материалы',DATE:'__________',COPIES:'1'},{NAME:'Копии сертификатов, деклараций и паспортов на применённые материалы',DATE:'__________',COPIES:'1'},{NAME:'Общий журнал работ № 1 (приказ Минстроя России от 02.12.2022 № 1026/пр)',DATE:'__________',COPIES:'1'},{NAME:'Журнал входного контроля материалов и изделий',DATE:'__________',COPIES:'1'});
@@ -1209,6 +1229,18 @@ async function idDownloadMatActs(){const secs=idSections();if(!secs.length){toas
     const xml=base.slice(0,base.indexOf('<w:body>')+8)+parts.join('<w:p><w:r><w:br w:type="page"/></w:r></w:p>')+base.slice(base.lastIndexOf('<w:sectPr'));
     z.file('word/document.xml',xml);const u8=await z.generateAsync({type:'uint8array',compression:'DEFLATE'});saveBlob(new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`Акты согласования материалов (${secs.length}) — ${(S.objects[0]||{}).code||''}.docx`);
     let d=idDoc('matact');if(!d){d={key:'matact',type:'doc',title:'Акты согласования материалов',date:ISO(TODAY)};idState().docs.push(d)}if(!d.status||d.status==='none')d.status='ready';render();toast(`Собрано ${secs.length} актов согласования по разделам сметы`)}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
+/* ВОР для бригады: №1 отделочные, №2 электромонтажные, №3 сводная — из позиций сметы по разделам */
+function vorItems(kind){const secs=idSections();const el=x=>/электро/i.test(x.name);const pick=kind===1?secs.filter(x=>!el(x)):kind===2?secs.filter(el):secs;const items=[];let n=0;
+  pick.forEach((sec,i)=>{items.push({HDR:'Раздел '+(i+1)+'. '+sec.name});sec.items.forEach(it=>{n++;items.push({N:String(n),NAME:it.name,UNIT:(it.unit||'').replace(/^100 /,'').replace(/м2/,'м²').replace(/м3/,'м³'),QTY:it.qty!=null?qtyText(it.qty,it.unit).replace(/\s\S+$/,''):'',NOTE:''})})});return items}
+async function idDownloadVor(kind){const items=vorItems(kind);if(!items.some(x=>x.NAME)){toast(kind===2?'В смете нет раздела электромонтажных работ':'Сначала загрузите смету');return}
+  try{const v=Object.assign(tplValues(),{VOR_SUBTITLE:kind===1?'отделочные работы — для бригады':kind===2?'электромонтажные работы — для бригады':'все работы по объекту — сводная'});
+    const buf=await tplLoad('vor');const z=await JSZip.loadAsync(buf);let xml=await z.file('word/document.xml').async('string');
+    const reH=/<w:tr\b[^>]*>(?:(?!<\/w:tr>)[\s\S])*?\{\{VOR_HDR\}\}[\s\S]*?<\/w:tr>/,reI=/<w:tr\b[^>]*>(?:(?!<\/w:tr>)[\s\S])*?\{\{VOR_NAME\}\}[\s\S]*?<\/w:tr>/;
+    const hdr=(xml.match(reH)||[''])[0],row=(xml.match(reI)||[''])[0];const at=xml.indexOf(hdr);
+    const seq=items.map(it=>it.HDR?hdr.replace('{{VOR_HDR}}',xmlEsc(it.HDR)):row.replace(/\{\{VOR_([A-Z_]+)\}\}/g,(_,k)=>xmlEsc(it[k]||''))).join('');
+    xml=xml.slice(0,at)+seq+xml.slice(at).replace(hdr,'').replace(row,'');xml=tplFill(xml,v,{});
+    z.file('word/document.xml',xml);const u8=await z.generateAsync({type:'uint8array',compression:'DEFLATE'});saveBlob(new Blob([u8],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),`ВОР № ${kind} — ${v.VOR_SUBTITLE} — ${(S.objects[0]||{}).code||''}.docx`);
+    let d=idDoc('vor'+kind);if(!d){d={key:'vor'+kind,type:'doc',title:'ВОР № '+kind,date:ISO(TODAY)};idState().docs.push(d)}if(!d.status||d.status==='none')d.status='ready';render();toast('ВОР по форме компании сохранена')}catch(e){toast('Не удалось собрать документ: '+(e.message||e))}}
 /* АОСР по форме компании */
 function aosrValues(d){const v=tplValues();const s=idSettings();const st=(S.schedule?S.schedule.stages:[]).find(x=>'aosr:'+x.id===d.key);
   return Object.assign(v,{AOSR_OBJECT:(s.object||v.OBJECT_CAP)+(v.CUSTOMER?' — '+v.CUSTOMER:'')+(v.ADDRESS?', '+v.ADDRESS:''),AOSR_NO:d.number,AOSR_DATE_LONG:ruLong(d.date),AOSR_WORKS:d.works||'',AOSR_PROJECT:d.project||'—',AOSR_MATERIALS:d.materials||'—',AOSR_PROOFS:d.proofs||'—',AOSR_START:ruD(d.start),AOSR_END:ruD(d.end),AOSR_NORMS:d.norms||'—',AOSR_NEXT:d.next||'—',AOSR_EXTRA:d.extra||'—',AOSR_ATTACH:d.attach||'—',COPIES:(s.copies||'3')+({'2':' (двух)','3':' (трёх)','4':' (четырёх)'}[s.copies||'3']||'')})}
@@ -1241,7 +1273,7 @@ function idView(){const o=S.objects[0];if(!o)return empty('Исполнител�
   <div class="box rise" style="margin-top:14px"><div class="box-h"><div><div class="t">Комплект исполнительной документации</div><div class="s">Список составлен по позициям сметы и графику. АОСР — на каждую работу; лишние отметьте «не требуется»</div></div>
     <div style="display:flex;gap:8px"><button class="btn sm" onclick="idDownloadAll()">Все АОСР одним файлом</button><button class="btn pri sm" onclick="idDownload('registry')">Реестр ИД в Word</button></div></div>
     <div style="overflow-x:auto"><table><thead><tr><th style="width:30px">№</th><th>документ</th><th>работы по графику</th><th>статус</th><th style="text-align:right">действие</th></tr></thead><tbody>
-    ${['Начало работ','АОСР','Журналы','Материалы','Акты','Реестр'].map(g=>{const items=req.filter(r=>r.group===g);if(!items.length)return '';return `<tr><td colspan="5" style="background:var(--surface);font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 12px">${g==='АОСР'?'АКТЫ ОСВИДЕТЕЛЬСТВОВАНИЯ СКРЫТЫХ РАБОТ':g.toUpperCase()}</td></tr>`+items.map(r=>{const st=idStatus(r);const d=idDoc(r.key);const [lbl,tone]=ID_ST[st];const skip=st==='skip';
+    ${['Приказы','Начало работ','Охрана труда','ВОР для бригады','АОСР','Журналы','Материалы','Акты','Реестр','Памятки'].map(g=>{const items=req.filter(r=>r.group===g);if(!items.length)return '';return `<tr><td colspan="5" style="background:var(--surface);font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 12px">${g==='АОСР'?'АКТЫ ОСВИДЕТЕЛЬСТВОВАНИЯ СКРЫТЫХ РАБОТ':g.toUpperCase()}</td></tr>`+items.map(r=>{const st=idStatus(r);const d=idDoc(r.key);const [lbl,tone]=ID_ST[st];const skip=st==='skip';
       return `<tr style="${skip?'opacity:.5':''}"><td class="num" style="color:var(--ink-300);font-size:12px">${r.order||''}</td><td style="font-size:13.5px;font-weight:600">${r.group==='АОСР'&&d?'АОСР № '+esc(d.number)+' — ':''}${esc(r.group==='АОСР'?r.stage.name:r.title)}</td><td style="font-size:12.5px;color:var(--ink-500);white-space:nowrap">${r.stage?ruD(r.stage.actStart||r.stage.start)+' — '+ruD(r.stage.actEnd||r.stage.end)+(r.stage.actEnd?' · выполнена':r.stage.actStart?' · в работе':' · план'):'—'}</td><td><span class="chip ${tone}">${lbl}</span></td><td style="text-align:right;white-space:nowrap">${skip?`<button class="btn sm ghost" onclick="idToggleSkip('${r.key}')">Вернуть</button>`:r.group==='АОСР'?`<button class="btn sm ${d?'':'pri'}" onclick="idOpen('${r.key}')">${d?'Открыть':'Составить'}</button> ${d?`<button class="btn sm" onclick="idDownload('${r.key}')">Word</button> `:''}<button class="btn sm ghost" onclick="idToggleSkip('${r.key}')" title="Не скрытая работа — акт не нужен">не требуется</button>`:r.key==='registry'?`<button class="btn sm pri" onclick="idDownload('registry')">Word</button>`:r.lib?`<button class="btn sm ${d&&d.status&&d.status!=='none'?'':'pri'}" onclick="idDownloadLib('${r.key}')">Word</button> ${statusSel(r,st)} <button class="btn sm ghost" onclick="idToggleSkip('${r.key}')">не требуется</button>`:`${statusSel(r,st)} <button class="btn sm ghost" onclick="idToggleSkip('${r.key}')">не требуется</button>`}</td></tr>`}).join('')}).join('')}
     </tbody></table></div></div>`}
 
