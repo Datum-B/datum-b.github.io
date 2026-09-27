@@ -1501,17 +1501,37 @@ function posSummary(it){const p=planCost(it);const f=factOf(it.num);const done=d
   const status=costNow==null?'none':profit<0?'loss':margin(profit)<10?'thin':costNow<=p.direct?'good':'ok';
   return {p,f,done,forecast,costNow,planProfit,profit,planMargin:margin(planProfit),margin:profit!=null?margin(profit):null,status}}
 /* заявка снабженцу: реальные материалы к закупке — без воды, электроэнергии и мусора, одинаковые сведены, с запасом */
-const SUPPLY_SKIP=/электроэнерг|^вода(\s|$)|мусор|перевозк|погрузк|разгрузк|топлив|бензин|дизель|сжат\S* воздух|^пар(\s|$)|отходы|ненормируем|вспомогательн\w* (материальн|ненорм)/i;
-const SUPPLY_GROUPS=[['Двери и окна',/дверн|оконн|блок\w* (двер|окон|из пвх)|фурнитур|петл|замок|ручк|пена монтаж/i],['Электрика',/кабел|провод|щит|автомат|выключател|розетк|светильник|лампа|din|гофр|короб|кабель-канал|труб\w* пвх|клемм|распред|электро/i],['Сантехника',/труб\w* (сталь|полипроп|металлопласт|канализ)|фитинг|кран|смесител|унитаз|раковин|радиатор|муфт|сгон/i],['Плитка и полы',/плитк|керамогранит|линолеум|ламинат|плинтус|затирк|стяжк|наливн|пол\b/i],['Потолки',/потол|грильято|армстронг/i],['Краски и покрытия',/краск|эмал|лак\b|колер|обои|шпалер/i],['Сухие смеси, грунты, штукатурка',/смес|шпатл|шпакл|штукатур|грунт|клей|ровнител|цемент|песок/i],['ГКЛ, профили, крепёж',/гипсокартон|гкл|гвл|профил|каркас|брус|подвес|дюбел|саморез|крепеж|крепёж|анкер|лент/i],['Демонтаж и подготовка',/демонтаж|разборк/i]];
+const SUPPLY_SKIP=/электроэнерг|^вода(\s|$)|мусор|перевозк|погрузк|разгрузк|топлив|бензин|дизель|сжат\S* воздух|^пар(\s|$)|отходы|ненормируем|вспомогательн\w* (материальн|ненорм)|тальк|ветош|втулк|клинь|^бур(\s|$)|шкурк|перемычк|^болт|гипс строит|трубк\w* полихлорвинил|лент\w* изоляц|гильз|сжим|шайб|рейки деревян|краск\w* масл|шпатл\w*ка клеев/i;
+const SUPPLY_MIN=300; /* дешевле — не строка заявки, а хозрасходы */
+const SUPPLY_GROUPS=[['Двери и окна',/дверн|оконн|блок\w* (двер|окон|из пвх)|фурнитур|петл|замок|ручк|пена монтаж/i],['Электрика',/кабел|провод|щит|автомат|выключател|розетк|светильник|лампа|din|гофр|короб|кабель-канал|труб\w* пвх|клемм|распред|электро/i],['Сантехника',/труб\w* (сталь|полипроп|металлопласт|канализ)|фитинг|кран|смесител|унитаз|раковин|радиатор|муфт|сгон/i],['Плитка и полы',/плитк|керамогранит|линолеум|ламинат|плинтус|затирк|стяжк|наливн|пол\b/i],['Потолки',/потол|грильято|армстронг/i],['Краски и покрытия',/краск|эмал|лак\b|колер|обои|шпалер/i],['Сухие смеси, грунты, штукатурка',/смес|шпатл|шпакл|штукатур|грунт|клей|ровнител|цемент|песок/i],['ГКЛ, профили, крепёж',/гипсокартон|гкл|гвл|профил|каркас|брус|подвес|дюбел|саморез|шуруп|крепеж|крепёж|анкер|лент/i],['Демонтаж и подготовка',/демонтаж|разборк/i]];
 function supplyItems(){const e=S.estimates[0];const map=new Map();
   e.items.forEach(it=>{planCost(it).mats.forEach(m=>{if(!m.name||SUPPLY_SKIP.test(m.name))return;let unit=String(m.unit||'').replace(/м2/,'м²').replace(/м3/,'м³').trim();let qty=m.qty||0;const um=unit.match(/^(\d+)\s+(.+)$/);if(um){qty=qty*+um[1];unit=um[2]}/* «100 шт» → штуки */
     if(unit==='%'||!(qty>0))return;if(unit==='т'){qty=qty*1000;unit='кг'}/* тонны клея и затирки — в килограммах */
     const key=(m.name.toLowerCase().replace(/\s+/g,' ')+'|'+unit.toLowerCase());
     const cur=map.get(key)||{name:m.name.replace(/\s*\(прим\.\)/,''),unit,qty:0,sum:0,code:m.code||'',uses:[]};cur.qty+=qty;cur.sum+=m.sum||0;if(!cur.uses.includes(it.num))cur.uses.push(it.num);map.set(key,cur)})});
-  const items=[...map.values()].map(x=>{const g=(SUPPLY_GROUPS.find(([,re])=>re.test(x.name))||['Прочие материалы'])[0];const order=Math.max(0,x.qty*1.05);
-    const isInt=/^(шт|компл|пар|уп|мешок|рулон|100 шт|1000 шт)/i.test(x.unit);const ord=isInt?Math.ceil(order):Math.ceil(order*10)/10;
-    return Object.assign(x,{group:g,order:ord,price:x.qty?x.sum/x.qty:0})});
+  const items=[...map.values()].filter(x=>x.sum>=SUPPLY_MIN).map(x=>{const g=(SUPPLY_GROUPS.find(([,re])=>re.test(x.name))||['Прочие материалы'])[0];const isInt=/^(шт|компл|пар|уп|мешок|рулон)/i.test(x.unit);const bulk=!isInt||/дюбел|шуруп|саморез|гвозд/i.test(x.name);/* запас 5 % — только на расходуемое; оборудование и изделия — ровно по смете */
+    const order=Math.max(0,x.qty*(bulk?1.05:1));const ord=isInt?Math.ceil(order):Math.ceil(order*10)/10;
+    return Object.assign(x,{group:g,order:ord,price:x.qty?x.sum/x.qty:0,pack:packOf(x.name,x.unit,ord)})}).filter(x=>x.group!=='Прочие материалы');
   const gOrder=SUPPLY_GROUPS.map(g=>g[0]).concat(['Прочие материалы']);items.sort((a,b)=>gOrder.indexOf(a.group)-gOrder.indexOf(b.group)||b.sum-a.sum);return items}
+/* как это продаётся в магазине: листы, штуки по 3 м, мешки, канистры, бухты */
+function packOf(name,unit,q){const n=name.toLowerCase();const P=(k,per,lbl)=>({count:Math.ceil(q/per),label:lbl,text:Math.ceil(q/per)+' '+plural(Math.ceil(q/per),...k)+' '+lbl});
+  if(/блок\w* двер|дверн\w* блок/.test(n))return {count:1,label:'',text:'1 шт (проём '+fq(q)+' м²)'};
+  if(/лент/.test(n)&&unit==='м')return P(['рулон','рулона','рулонов'],50,'по 50 м');
+  if(/гипсокартон|гкл|гвл/.test(n)&&unit==='м²')return P(['лист','листа','листов'],3,'1200×2500 (3 м²)');
+  if(/профил/.test(n)&&unit==='м')return P(['шт','шт','шт'],3,'по 3 м');
+  if(/брус|рейк/.test(n)&&unit==='м³')return {count:null,label:'',text:fq(q)+' м³ (по сечению из сметы)'};
+  if(unit==='кг'&&/грунт/.test(n))return P(['канистра','канистры','канистр'],10,'по 10 л');
+  if(unit==='кг'&&/краск|эмал/.test(n))return P(['ведро','ведра','вёдер'],14,'по 14 кг');
+  if(unit==='кг'&&/затирк/.test(n))return P(['мешок','мешка','мешков'],5,'по 5 кг');
+  if(unit==='кг'&&/смес|шпатл|шпакл|штукатур|клей|ровнител|цемент/.test(n))return P(['мешок','мешка','мешков'],25,'по 25 кг');
+  if(/кабель|провод/.test(n)&&!/канал|короб/.test(n)&&unit==='м')return P(['бухта','бухты','бухт'],100,'по 100 м');
+  if(/гофр/.test(n)&&unit==='м')return P(['бухта','бухты','бухт'],100,'по 100 м');
+  if(/кабель-канал|короб/.test(n)&&unit==='м')return P(['шт','шт','шт'],2,'по 2 м');
+  if(/лент/.test(n)&&unit==='м')return P(['рулон','рулона','рулонов'],50,'по 50 м');
+  if(/дюбел|шуруп|саморез/.test(n)&&unit==='шт')return {count:Math.ceil(q/100)*100,label:'',text:Math.ceil(q/100)*100+' шт (упаковками)'};
+  if(/пена монтаж|герметик/.test(n))return {count:Math.ceil(q),label:'',text:Math.ceil(q)+' '+plural(Math.ceil(q),'баллон','баллона','баллонов')};
+  if(/плитк|керамогранит/.test(n)&&unit==='м²')return {count:null,label:'',text:fq(q)+' м² (упаковку уточнить у поставщика)'};
+  return {count:isFinite(q)?q:null,label:'',text:fq(q)+' '+unit}}
 const fq=v=>v==null?'':Number(v).toLocaleString('ru-RU',{maximumFractionDigits:3});
 async function supplyRequest(kind){const e=S.estimates[0];if(!e)return;const x=idCtx();const items=supplyItems();const code=(S.objects[0]||{}).code||'';
   if(!items.length){/* смета без ресурсной части (ВОР, простая таблица) */
@@ -1520,15 +1540,15 @@ async function supplyRequest(kind){const e=S.estimates[0];if(!e)return;const x=i
     try{saveBlob(await docxBlob(body,{landscape:true}),`Заявка на материалы — ${code}.docx`)}catch(err){toast(err.message);return}
     toast('Смета загружена без ресурсной части — заявка по видам работ. Загрузите локальный сметный расчёт целиком, и заявка соберётся по материалам');return}
   const total=items.reduce((a,b)=>a+b.sum,0);
-  if(kind==='xlsx'){if(!window.XLSX){toast('Модуль Excel ещё загружается');return}const aoa=[['ЗАЯВКА НА МАТЕРИАЛЫ'],['Объект: '+x.object],['Контракт '+x.contract+'. Подрядчик: '+x.company+'. Дата: '+ruD(ISO(TODAY))],[],['№','Группа','Материал','Ед.','По смете','К заказу (+5 %)','Цена по смете, ₽','Сумма по смете, ₽','Позиции сметы','Поставщик','Заказано','Цена факт','Сумма факт','Доставлено']];
-    items.forEach((m,i)=>aoa.push([i+1,m.group,m.name,m.unit,+m.qty.toFixed(3),m.order,+m.price.toFixed(2),+m.sum.toFixed(2),m.uses.join(', '),'','','','','']));
-    aoa.push([]);aoa.push(['','','Итого по смете','','','','',+total.toFixed(2)]);
-    const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[4,22,48,7,11,13,13,15,14,18,10,11,13,11].map(w=>({wch:w}));ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:8}},{s:{r:1,c:0},e:{r:1,c:8}},{s:{r:2,c:0},e:{r:2,c:8}}];
+  if(kind==='xlsx'){if(!window.XLSX){toast('Модуль Excel ещё загружается');return}const aoa=[['ЗАЯВКА НА МАТЕРИАЛЫ'],['Объект: '+x.object],['Контракт '+x.contract+'. Подрядчик: '+x.company+'. Дата: '+ruD(ISO(TODAY))],[],['№','Группа','Материал','Ед.','По смете','К заказу (+5 %)','В магазине (упаковка)','Цена по смете, ₽','Сумма по смете, ₽','Позиции сметы','Поставщик','Заказано','Цена факт','Сумма факт','Доставлено']];
+    items.forEach((m,i)=>aoa.push([i+1,m.group,m.name,m.unit,+m.qty.toFixed(3),m.order,m.pack.text,+m.price.toFixed(2),+m.sum.toFixed(2),m.uses.join(', '),'','','','','']));
+    aoa.push([]);aoa.push(['','','Итого по смете','','','','','',+total.toFixed(2)]);
+    const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[4,22,48,7,11,13,26,13,15,14,18,10,11,13,11].map(w=>({wch:w}));ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}},{s:{r:2,c:0},e:{r:2,c:9}}];
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Заявка');XLSX.writeFile(wb,`Заявка на материалы — ${code}.xlsx`);toast(`Заявка в Excel: ${items.length} материалов на ${m(total)} — с колонками для факта закупки`);return}
-  const rows=[['№','Материал','Ед.','По смете','К заказу (+5 %)','Цена по смете, ₽','Сумма, ₽','Позиции','Заказано / примечание']];let g='',n=0;
-  items.forEach(it=>{if(it.group!==g){g=it.group;rows.push(g.toUpperCase())}n++;rows.push([String(n),it.name,it.unit,fq(it.qty),fq(it.order),fmtRub(it.price),fmtRub(it.sum),it.uses.join(', '),''])});
+  const rows=[['№','Материал','Ед.','По смете','К заказу','В магазине (упаковка)','Сумма по смете, ₽','Заказано / примечание']];let g='',n=0;
+  items.forEach(it=>{if(it.group!==g){g=it.group;rows.push(g.toUpperCase())}n++;rows.push([String(n),it.name,it.unit,fq(it.qty),fq(it.order),it.pack.text,fmtRub(it.sum),''])});
   const body=dp('ЗАЯВКА НА МАТЕРИАЛЫ',{b:true,jc:'center',sz:28,after:0})+dp('(по локальному сметному расчёту, к закупке)',{jc:'center',after:160})+dp('Объект: '+x.object+'.')+dp('Контракт '+x.contract+'. Подрядчик: '+x.company+'.')+dp('Дата заявки: '+ruD(ISO(TODAY))+'. Срок поставки: до __________. Адрес доставки: '+(x.address||'__________')+'.',{after:160})
-    +dtable(rows,[450,4300,700,1000,1100,1200,1300,1000,2300])+dp('',{after:120})+dp('Итого по смете: '+fmtRub(total)+' ₽. Количество к заказу — с запасом 5 % на бой и подрезку; вода, электроэнергия, вывоз мусора в заявку не входят. Марку и производителя согласовать с заказчиком до закупки (акты согласования материалов).',{sz:20})+dp('',{after:200})+dp(`${x.signHead}  ______________  ${shortFio(x.fio)}`);
+    +dtable(rows,[450,4600,700,1000,1000,2600,1300,1700])+dp('',{after:120})+dp('Итого по смете: '+fmtRub(total)+' ₽. Количество к заказу — с запасом 5 % на бой и подрезку, упаковка — стандартная магазинная (лист 3 м², профиль 3 м, мешок 25 кг, бухта 100 м). Мелкий крепёж и расходники дешевле 300 ₽ — за счёт хозрасходов. Марку и производителя согласовать с заказчиком до закупки.',{sz:20})+dp('',{after:200})+dp(`${x.signHead}  ______________  ${shortFio(x.fio)}`);
   try{saveBlob(await docxBlob(body,{landscape:true}),`Заявка на материалы — ${code}.docx`);toast(`Заявка снабженцу: ${items.length} материалов на ${m(total)} — файл в загрузках`)}catch(err){toast('Не удалось собрать заявку: '+(err.message||err))}}
 function pEstimates(){const e=S.estimates[0];if(!e)return head('Производство','Сметы · план/факт','Смет пока нет')+`<div class="page">${empty('Смета — это план дохода и затрат по объекту','Загрузите локальный сметный расчёт: система разложит его на позиции, посчитает плановую себестоимость и будет сравнивать с реальными затратами.','Загрузить смету',"S.screen='wizard';S.step=3;render()",['SmetaWIZARD, ГрандСмета — Word или Excel','По каждой позиции: доход, план затрат, факт, прибыль','Заявка снабженцу и ВОР прорабу — из позиций'])}</div>`;
   const rows=e.items.map(it=>({it,s:posSummary(it)}));
