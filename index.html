@@ -1462,7 +1462,9 @@ function pDocsFiles(tabBar){if(!S.docs.length)return head('Контроль','Д
 const nz=v=>{const c=String(v==null?'':v).replace(/[\s ]/g,'').replace(',','.');return /^-?\d+(\.\d+)?$/.test(c)?parseFloat(c):null};
 /* плановая себестоимость позиции — из структуры сметы: ОТ, ЭМ, М — прямые затраты; НР и СП — накладные и прибыль */
 function planCost(it){const e=S.estimates[0];const blk=e&&e.lsr&&e.lsr.blocks&&e.lsr.blocks[it.num];const r={labor:0,mach:0,mat:0,direct:null,nr:0,sp:0,mats:[]};
-  if(!blk)return {labor:0,mach:0,mat:0,direct:Math.round(it.sum*0.62),nr:0,sp:Math.round(it.sum*0.38),mats:[],approx:true};
+  /* есть ли в смете ресурсная часть вообще (ВОР и простые таблицы — нет) */
+  if(e&&e.lsr&&e.lsr.hasRes==null)e.lsr.hasRes=Object.values(e.lsr.blocks||{}).some(b=>b.some(row=>/^Итого прямые затраты/i.test(String(row[2]||''))));
+  if(!blk||!(e.lsr&&e.lsr.hasRes))return {labor:0,mach:0,mat:0,direct:Math.round(it.sum*0.62),nr:0,sp:Math.round(it.sum*0.38),mats:[],approx:true};
   let mode='';
   blk.forEach((row,i)=>{if(i===0)return;const c1=String(row[1]||'').trim(),name=String(row[2]||'').trim(),last=nz(row[11]);
     if(/^\d+\.\d+$/.test(String(row[0]||'').trim())){if(last)r.mat+=last;if(name&&!/мусор/i.test(name))r.mats.push({name,unit:row[3]||'',qty:nz(row[6])!=null?nz(row[6]):nz(row[4]),sum:last||0,code:c1});return}
@@ -1476,6 +1478,10 @@ function planCost(it){const e=S.estimates[0];const blk=e&&e.lsr&&e.lsr.blocks&&e
   const sub=blk.filter(row=>/^\d+\.\d+$/.test(String(row[0]||'').trim())).reduce((a,row)=>a+(nz(row[11])||0),0);
   if(r.direct==null)r.direct=r.labor+r.mach+(r.mat-sub);
   r.direct=Math.round((r.direct+sub)*100)/100;r.mat=Math.round(r.mat*100)/100;
+  /* если маркеры «М» не найдены (другой формат выгрузки) — материалы узнаём по единицам измерения */
+  if(!r.mats.length){blk.slice(1).forEach(row=>{const c1=String(row[1]||'').trim(),name=String(row[2]||'').trim(),unit=String(row[3]||'').trim(),last=nz(row[11]);
+    if(!name||!unit||/чел|маш|%/.test(unit)||/^(ОТ|ЭМ|М$|ФОТ|НР|СП|Итого|Всего)/i.test(name)||/^\d-\d{3}-\d+$/.test(c1)||/^(Средний разряд|Затраты труда)/i.test(name))return;
+    if(/^(м|м2|м²|м3|м³|шт|кг|т|л|компл|пог\.?м|100 м|1000 шт|м\/п|уп|мешок|рулон|пар)/i.test(unit))r.mats.push({name,unit,qty:nz(row[6])!=null?nz(row[6]):nz(row[4]),sum:last||0,code:c1})})}
   /* позиция-материал (щит, кабель, светильник): расценки нет, вся цена — стоимость материала по смете */
   if(r.direct===0&&r.nr===0&&r.sp===0&&it.sum>0){const f=blk[0];r.mat=it.sum;r.direct=it.sum;r.material=true;if(f&&f[2])r.mats.push({name:String(f[2]).replace(/\s*\(прим\.\)/,''),unit:f[3]||it.unit,qty:nz(f[6])!=null?nz(f[6]):it.qty,sum:it.sum,code:String(f[1]||'')})}
   return r}
@@ -1497,10 +1503,13 @@ function posSummary(it){const p=planCost(it);const f=factOf(it.num);const done=d
 /* заявка снабженцу: материалы по позициям сметы */
 async function supplyRequest(){const e=S.estimates[0];if(!e)return;const x=idCtx();const rows=[['№','Материал (по смете)','Ед. изм.','Кол-во по смете','Сметная цена, ₽','Позиция сметы','Заказано / примечание']];let n=0;
   e.items.forEach(it=>{planCost(it).mats.forEach(m=>{n++;rows.push([String(n),m.name,String(m.unit||''),m.qty!=null?String(m.qty):'',m.sum?fmtRub(m.sum):'',it.num+'. '+it.name.slice(0,50),''])})});
-  if(n===0){toast('В смете не найдено материальных ресурсов — заявка по позициям недоступна');return}
+  let note='';
+  if(n===0){/* смета без ресурсной части (ВОР, простая таблица): заявка по позициям работ — снабженец уточняет материалы */
+    e.items.forEach(it=>{n++;rows.push([String(n),it.name,String((it.unit||'').replace(/^100 /,'')),it.qty!=null?qtyText(it.qty,it.unit).replace(/\s\S+$/,''):'','',it.num+'. '+it.name.slice(0,50),'материалы уточнить'])});
+    note='Смета загружена без ресурсной части — материалы перечислены по видам работ. Загрузите локальный сметный расчёт целиком (Word из SmetaWIZARD/ГрандСметы), и заявка соберётся по материалам с количеством и ценой.'}
   const body=dp('ЗАЯВКА НА МАТЕРИАЛЫ',{b:true,jc:'center',sz:28,after:0})+dp('(по локальному сметному расчёту)',{jc:'center',after:160})+dp('Объект: '+x.object+'.')+dp('Контракт '+x.contract+'. Подрядчик: '+x.company+'.')+dp('Дата заявки: '+ruD(ISO(TODAY))+'. Срок поставки: до __________.',{after:160})
     +dtable(rows,[500,4200,900,1200,1300,2600,1800])+dp('',{after:160})+dp('Материалы согласовать с заказчиком до закупки (акты согласования материалов). Замена — только по письменному согласованию.',{sz:20})+dp('',{after:200})+dp(`${x.signHead}  ______________  ${shortFio(x.fio)}`);
-  try{saveBlob(await docxBlob(body,{landscape:true}),`Заявка на материалы — ${(S.objects[0]||{}).code||''}.docx`);toast(`Заявка снабженцу: ${n} материалов по ${e.items.length} позициям`)}catch(err){toast('Не удалось собрать заявку: '+(err.message||err))}}
+  try{saveBlob(await docxBlob(body,{landscape:true}),`Заявка на материалы — ${(S.objects[0]||{}).code||''}.docx`);toast(note||`Заявка снабженцу: ${n} материалов по ${e.items.length} позициям — файл в загрузках`)}catch(err){toast('Не удалось собрать заявку: '+(err.message||err))}}
 function pEstimates(){const e=S.estimates[0];if(!e)return head('Производство','Сметы · план/факт','Смет пока нет')+`<div class="page">${empty('Смета — это план дохода и затрат по объекту','Загрузите локальный сметный расчёт: система разложит его на позиции, посчитает плановую себестоимость и будет сравнивать с реальными затратами.','Загрузить смету',"S.screen='wizard';S.step=3;render()",['SmetaWIZARD, ГрандСмета — Word или Excel','По каждой позиции: доход, план затрат, факт, прибыль','Заявка снабженцу и ВОР прорабу — из позиций'])}</div>`;
   const rows=e.items.map(it=>({it,s:posSummary(it)}));
   const income=e.items.reduce((a,b)=>a+b.sum,0);const planDirect=rows.reduce((a,r)=>a+r.s.p.direct,0);const factTotal=rows.reduce((a,r)=>a+r.s.f.total,0);
