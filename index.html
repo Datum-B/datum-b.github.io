@@ -193,6 +193,109 @@ html.dark .toast{background:#F4F6F9;color:#0B0D10}
 .st input[type=number]{width:62px;height:32px;font-size:13px}
 .st .ask{display:flex;gap:6px;align-items:center}
 @media(max-width:900px){.gt{grid-template-columns:200px max-content}}
+
+/* ═══ DATUM · skin 2: светлый, чистый, плотный (банковский стиль) ═══ */
+:root{
+  --ink:#0F172A;--ink-700:#1F2937;--ink-500:#5B6472;--ink-300:#98A2B3;--ink-200:#D0D5DD;
+  --line:#E6E9EF;--bg:#FFFFFF;--surface:#F3F5F8;--surface-2:#F8F9FB;--canvas:#F0F2F6;
+  --o50:#EDF2FF;--o100:#DCE5FF;--o300:#7C9AFF;--o500:#2F63F6;--o600:#1F4FE0;--o700:#173FBF;
+  --ok:#0E8A5F;--ok-50:#E9F8F1;--warn:#9A5B00;--warn-500:#E58A00;--warn-50:#FFF6E5;--danger:#D12E2E;--danger-50:#FDECEC;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+  --shadow-lg:0 12px 32px -14px rgba(16,24,40,.28);
+  --r:14px;--r-sm:10px;--r-lg:18px;
+  --accent:var(--o600);--btn:var(--o500);
+}
+html.dark{
+  --ink:#F3F5F8;--ink-700:#D0D5DD;--ink-500:#98A2B3;--ink-300:#6B7482;--ink-200:#3A4352;
+  --line:#262E3B;--bg:#161B25;--surface:#1D2432;--surface-2:#1A2030;--canvas:#0F131B;
+  --o50:#1B2A4F;--o100:#22366A;--o300:#6F92FF;--o500:#5B86FF;--o600:#7AA0FF;--o700:#9FBBFF;--accent:#8FB0FF;--btn:#3B6DF5;
+  --ok:#3DD598;--ok-50:#12271F;--warn:#F0A45C;--warn-50:#2A1E12;--danger:#F87171;--danger-50:#2C1618;
+  --shadow:0 1px 2px rgba(0,0,0,.4);--shadow-lg:0 20px 48px -18px rgba(0,0,0,.7);
+}
+body{font-size:14px;line-height:1.5;background:var(--canvas)}
+h1{font-size:30px}h2{font-size:20px;font-weight:800;letter-spacing:-.025em}h3{font-size:15px}
+.eyebrow{font-size:12px;letter-spacing:0;text-transform:none;font-weight:500;color:var(--ink-500)}
+::selection{background:var(--o100)}
+:focus-visible{outline:2px solid var(--o500)}
+
+/* поверхности: белые карточки на сером холсте */
+.box{border:1px solid transparent;border-radius:var(--r);background:var(--bg);box-shadow:var(--shadow)}
+html.dark .box{border-color:var(--line)}
+.box.soft{background:var(--surface-2);box-shadow:none;border-color:var(--line)}
+.box-h{padding:14px 18px 12px}
+.box-h .t{font-size:14.5px;font-weight:700}
+.box-h .s{font-size:12.5px;margin-top:2px}
+.rec{border-left:none;background:var(--o50);border-radius:12px;padding:14px 18px}
+.rec .eyebrow{color:var(--o700);font-weight:600}
+.chip{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid transparent;background:var(--surface);color:var(--ink-700)}
+.chip.ok{background:var(--ok-50);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-50);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--danger-50);color:var(--danger);border-color:transparent}
+.chip.brand{background:var(--o50);color:var(--o700);border-color:transparent}
+
+.btn{font-size:13.5px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--bg);box-shadow:0 1px 1px rgba(16,24,40,.04)}
+.btn:hover{background:var(--surface)}
+.btn.pri{background:var(--btn);color:#fff;border-color:transparent;box-shadow:0 1px 2px rgba(47,99,246,.35)}
+.btn.pri:hover{filter:brightness(1.05)}
+.btn.sm{font-size:12.5px;padding:6px 11px;border-radius:9px}
+.btn.ghost{box-shadow:none;border-color:transparent;background:transparent}
+input,select{height:36px;padding:0 11px;border-radius:10px;font-size:13.5px;background:var(--bg)}
+input:focus,select:focus{border-color:var(--o500);box-shadow:0 0 0 3px var(--o100)}
+input[type=date]{font-size:13px}
+.track{height:6px;background:var(--line)}
+.fill{background:var(--o500)}
+table{font-size:13px}
+th{padding:9px 12px;font-size:11px;letter-spacing:.06em;color:var(--ink-500);background:var(--surface-2);font-weight:600}
+td{padding:9px 12px}
+tbody tr:hover td{background:var(--surface-2)}
+.toast{border-radius:12px;font-size:13.5px;box-shadow:var(--shadow-lg)}
+
+/* вход и мастер */
+.auth .left{background:var(--bg);border-right:1px solid var(--line)}
+.auth .right{background:var(--canvas)}
+.kpis{border:none;background:transparent;gap:10px;max-width:640px}
+.kpis div{border-radius:12px;box-shadow:var(--shadow)}
+.card{border:none;box-shadow:var(--shadow);border-radius:var(--r-lg);padding:26px}
+.step{border-radius:10px;font-size:12.5px}
+.step.on{border-color:transparent;background:var(--o50);color:var(--o700)}
+.step.on .n{background:var(--o500)}
+.check{border-radius:12px}
+.drop{border-radius:12px}
+
+/* каркас: узкая белая панель, серый холст, компактная шапка */
+.shell{background:var(--canvas)}
+.rail{width:224px;background:var(--bg);border-right:1px solid var(--line)}
+.rail-top{height:56px;padding:0 16px;border-bottom:none}
+.rail-top .mark b{letter-spacing:.12em;font-size:13px}
+.nav{padding:6px 10px}
+.nav a{height:34px;padding:0 10px;font-size:13.5px;border-radius:9px;color:var(--ink-700);gap:11px}
+.nav a:hover{background:var(--surface);color:var(--ink)}
+.nav a.on{background:var(--o50);color:var(--o700);font-weight:600;box-shadow:none}
+.nav a .ic{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;opacity:.85;font-size:12px}
+.nav a .ic svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav a.on .ic{opacity:1}
+.rail-foot{padding:8px 10px 10px;border-top:1px solid var(--line)}
+.rail-foot a.nav{height:30px!important;font-size:12.5px!important}
+.who{border-radius:12px;background:var(--surface);border:none;padding:8px 10px}
+.main{background:var(--canvas)}
+.launch{padding:8px 24px;border-bottom:1px solid var(--line);background:var(--bg);display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--ink-500)}
+.launch b{color:var(--ink);font-weight:600}
+.topbar{padding:18px 24px 14px;border-bottom:none;background:transparent;align-items:center}
+.topbar .eyebrow{display:none}
+.topbar h2{margin-top:0!important}
+.topbar .sub{font-size:13px;margin-top:3px}
+.page{padding:0 24px 56px;max-width:1440px}
+.grid{gap:12px}
+.stat{padding:16px 18px 14px}
+.stat .eyebrow{font-size:12.5px}
+.stat .v{font-size:26px;font-weight:800;letter-spacing:-.03em;margin-top:6px}
+.stat .d{margin-top:8px;font-size:12px}
+.empty{box-shadow:var(--shadow);padding:32px}
+.gt .fact{background:var(--o500)}.gt .fact.open{background:var(--o300)}
+.gt .today{border-left-color:var(--o600)}
+.gtl{font-size:12px}
+.st{font-size:12.5px}
+@media(max-width:860px){.page{padding:0 14px 40px}.topbar{padding:14px}}
 </style>
 </head>
 <body>
@@ -713,12 +816,28 @@ function connectTelegram(){busy('Создаём бота компании и г�
 function finishWizard(){S.screen='app';S.page='dash';render();toast('Система запущена')}
 
 /* ═══ Система после запуска ═══ */
+const ICO={
+dash:'<path d="M3 12 12 4l9 8"/><path d="M5 10v10h14V10"/>',
+objects:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/>',
+contract:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+schedule:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M7 14h4M7 17h7"/>',
+tasks:'<path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
+estimates:'<path d="M5 4h14M5 20h14M5 4l7 8-7 8M19 4l-7 8 7 8"/>',
+procure:'<path d="M3 5h3l2.4 10h10L21 8H7"/><circle cx="10" cy="19" r="1.2"/><circle cx="17" cy="19" r="1.2"/>',
+finance:'<path d="M8 20V4h5a4 4 0 0 1 0 8H8M6 15h8M6 12h2"/>',
+docs:'<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M4 7v14h11"/>',
+risks:'<path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>',
+tenders:'<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+analytics:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ai:'<path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.5"/>',
+team:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21.5 20a6.5 6.5 0 0 0-4.5-6.2"/>'};
+const ico=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]||''}</svg>`;
 const NAV=[['dash','Главная','◧'],['objects','Объекты','▣'],['contract','Контракт','§'],['schedule','График работ','⌗'],['tasks','Задачи','☑'],['estimates','Сметы','∑'],['procure','Снабжение','⧉'],['finance','Деньги','₽'],['docs','Документы','▥'],['risks','Риски','◬'],['tenders','Закупки','◎'],['analytics','Аналитика','⋮⋮'],['ai','ИИ-ассистент','✦'],['team','Команда','◍']];
 function progress(){return [['Компания заведена',!!S.company,"S.screen='wizard';S.step=0;render()"],['Команда приглашена',S.team.length>0,"S.screen='wizard';S.step=1;render()"],['Первый объект создан',S.objects.length>0,"S.screen='wizard';S.step=2;render()"],['Смета загружена',S.estimates.length>0,"S.screen='wizard';S.step=3;render()"],['Документы загружены',S.docs.length>0,"S.screen='wizard';S.step=4;render()"],['Telegram подключён',S.telegram,"S.screen='wizard';S.step=4;render()"]]}
 function appView(){restoreObjects();const list=progress(),done=list.filter(x=>x[1]).length;
   return `<div class="shell"><aside class="rail">
     <div class="rail-top"><div class="mark">${MARK(24,'var(--ink)')}<div><b style="display:block">DATUM</b><span class="eyebrow" style="display:block;font-size:9.5px;margin-top:2px">${S.company?esc(S.company.name.replace('ООО ','')):'компания'}</span></div></div></div>${objSwitcher()}
-    <nav class="nav">${NAV.map(([k,l,ic])=>`<a class="${S.page===k?'on':''}" onclick="go('${k}')"><span class="ic">${ic}</span>${l}</a>`).join('')}</nav>
+    <nav class="nav">${NAV.map(([k,l,ic])=>`<a class="${S.page===k?'on':''}" onclick="go('${k}')"><span class="ic">${ico(k)}</span>${l}</a>`).join('')}</nav>
     <div class="rail-foot">
       <a class="nav" onclick="S.changelog=true;render()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">✦</span>Что нового<span class="eyebrow" style="margin-left:auto;font-size:9.5px">${VERSION}</span></a>
       <a class="nav" onclick="exportData()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">↧</span>Выгрузить данные</a>
@@ -729,7 +848,7 @@ function appView(){restoreObjects();const list=progress(),done=list.filter(x=>x[
         <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,''))}</div><div class="eyebrow" style="margin-top:2px;font-size:10px">пилот · ИНН ${esc(S.key||'')}</div></div>
         <button onclick="resetAll()" title="Начать заново" style="color:var(--ink-300);font-size:15px">⟲</button></div></div></aside>
   <main class="main">
-    ${done<list.length?`<div style="padding:12px 30px;border-bottom:1px solid var(--line);background:var(--o50);display:flex;gap:14px;align-items:center;flex-wrap:wrap"><span class="eyebrow" style="color:var(--o700)">запуск ${done} из ${list.length}</span><div class="track" style="flex:1;max-width:260px"><div class="fill" style="width:${done/list.length*100}%"></div></div><button class="btn sm ghost" style="margin-left:auto" onclick="go('dash')">Чек-лист</button></div>`:''}
+    ${done<list.length?`<div class="launch"><span><b>Запуск</b> · шаг ${done} из ${list.length}</span><div class="track" style="flex:1;max-width:220px"><div class="fill" style="width:${done/list.length*100}%"></div></div><button class="btn sm ghost" style="margin-left:auto" onclick="go('dash')">Чек-лист →</button></div>`:''}
     ${({dash:pDash,objects:pObjects,schedule:pSchedule,docs:pDocs,estimates:pEstimates,finance:pFinance,tenders:pTenders,ai:pAI,team:pTeam,contract:pContract,tasks:pTasks,procure:pProcure,risks:pRisks,analytics:pAnalytics})[S.page]()}
   </main></div>`}
 function head(eyebrow,title,sub,actions){return `<div class="topbar"><div><div class="eyebrow">${eyebrow}</div><h2 style="margin-top:6px">${title}</h2>${sub?`<div class="sub">${sub}</div>`:''}</div><div style="display:flex;gap:8px;align-items:center">${actions||''}</div></div>`}
