@@ -352,6 +352,26 @@ html.dark .topbar{background:rgba(15,19,27,.86)}
 .auth .preview i{font-style:normal;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block;margin-top:6px}
 .auth .right .logincard{background:var(--bg);border-radius:20px;box-shadow:var(--shadow-lg);padding:30px}
 @media(max-width:860px){.hero-card{grid-template-columns:1fr}.ring{display:none}.topbar{position:static}}
+
+/* мобильная навигация */
+.mnav{display:none}
+@media(max-width:860px){
+ .mnav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+ html.dark .mnav{background:rgba(22,27,37,.96)}
+ .mnav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;font-weight:600;color:var(--ink-500);padding:4px 0;cursor:pointer;position:relative}
+ .mnav a.on{color:var(--o600)}
+ .mnav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+ .mnav .bdg{position:absolute;top:0;left:calc(50% + 6px);min-width:16px;height:16px;border-radius:99px;background:var(--danger);color:#fff;font-size:10px;display:grid;place-items:center;padding:0 4px}
+ .msheet{position:fixed;inset:0;z-index:65;background:rgba(15,23,42,.4);display:flex;align-items:flex-end}
+ .msheet>div{background:var(--bg);width:100%;border-radius:20px 20px 0 0;padding:14px 14px calc(78px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+ .msheet a{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border-radius:12px;background:var(--surface);font-size:12px;font-weight:600;color:var(--ink-700);text-align:center}
+ .msheet a.on{background:var(--o50);color:var(--o700)}
+ .msheet svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+ .main{padding-bottom:72px}
+ .fb{bottom:84px;right:14px;padding:8px 12px}
+ .mtop{display:flex!important}
+}
+.mtop{display:none;align-items:center;gap:10px;padding:12px 14px 0}
 </style>
 </head>
 <body>
@@ -902,6 +922,9 @@ function navBadge(k){try{const code=(S.objects[0]||{}).code;if(!code)return '';
 function objPick(){const o=S.objects[0];if(!o)return `<div class="objpick" onclick="beginNewObject()"><div class="av" style="background:var(--ink-300)">＋</div><div style="min-width:0"><div class="t">Добавить объект</div><div class="s">контракт и смета из файлов</div></div></div>`;
   const ini=String(o.code||'OB').replace(/[^А-ЯA-Z0-9]/gi,'').slice(0,4);
   return `<div class="objpick" style="position:relative" ${S.objects.length<2?`onclick="go('objects')"`:''} title="${S.objects.length>1?'Переключить объект':'Карточка объекта'}"><div class="av">${esc(ini)}</div><div style="min-width:0;flex:1"><div class="t">${esc(o.code)}</div><div class="s">${esc(o.subject||o.customer||'')}</div></div><span style="color:var(--ink-300);font-size:12px">${S.objects.length>1?'⇅':'›'}</span>${S.objects.length>1?`<select onchange="switchObject(this.value)">${S.objects.map(x=>`<option value="${esc(x.code)}"${x===o?' selected':''}>${esc(x.code)}${x.subject?' · '+esc(x.subject.slice(0,30)):''}</option>`).join('')}</select>`:''}</div>`}
+function mobileNav(){const tabs=[['dash','Главная'],['tasks','Задачи'],['schedule','График'],['docs','Документы']];const lbl=Object.fromEntries(NAV.map(([k,l])=>[k,l]));
+  return `<nav class="mnav">${tabs.map(([k,l])=>`<a class="${S.page===k&&!S.mmore?'on':''}" onclick="S.mmore=false;go('${k}')">${ico(k)}${l}${k==='tasks'?navBadge(k):''}</a>`).join('')}<a class="${S.mmore||!tabs.some(t=>t[0]===S.page)?'on':''}" onclick="S.mmore=!S.mmore;render()"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>Ещё${navBadge('risks')}</a></nav>
+  ${S.mmore?`<div class="msheet" onclick="if(event.target===this){S.mmore=false;render()}"><div>${NAV.filter(([k])=>!tabs.some(t=>t[0]===k)).map(([k,l])=>`<a class="${S.page===k?'on':''}" onclick="S.mmore=false;go('${k}')">${ico(k)}${l}</a>`).join('')}<a onclick="S.mmore=false;theme();render()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16" /></svg>Тема</a><a onclick="S.mmore=false;exportData()"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Выгрузить</a></div></div>`:''}`}
 function appView(){restoreObjects();const list=progress(),done=list.filter(x=>x[1]).length;const lbl=Object.fromEntries(NAV.map(([k,l])=>[k,l]));
   const link=(cls,onclick,ic,text,extra)=>`<a class="nav" onclick="${onclick}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;font-size:12.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">${ic}</span>${text}${extra||''}</a>`;
   return `<div class="shell"><aside class="rail">
@@ -918,9 +941,9 @@ function appView(){restoreObjects();const list=progress(),done=list.filter(x=>x[
       <div class="who" style="margin-top:6px"><div style="width:32px;height:32px;border-radius:10px;background:var(--o500);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'В')}</div>
         <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,''))}</div><div style="margin-top:1px;font-size:11px;color:var(--ink-500)">ИНН ${esc(S.key||'')}</div></div>
         <button onclick="resetAll()" title="Выйти и начать заново" style="color:var(--ink-300);font-size:15px">⟲</button></div></div></aside>
-  <main class="main">
+  <main class="main"><div class="mtop">${MARK(22,'var(--ink)')}<b style="font-size:13px;letter-spacing:.12em">DATUM</b>${S.objects[0]?`<span class="chip" style="margin-left:auto">${esc(S.objects[0].code)}</span>`:''}</div>
     ${({dash:pDash,objects:pObjects,schedule:pSchedule,docs:pDocs,estimates:pEstimates,finance:pFinance,tenders:pTenders,ai:pAI,team:pTeam,contract:pContract,tasks:pTasks,procure:pProcure,risks:pRisks,analytics:pAnalytics})[S.page]()}
-  </main></div>`}
+  </main>${mobileNav()}</div>`}
 function head(eyebrow,title,sub,actions){const o=S.objects[0];const tag=o&&OBJ_PAGES.has(S.page)?`<span class="objtag"><span style="width:7px;height:7px;border-radius:99px;background:var(--o500);display:inline-block"></span>${esc(o.code)}</span>`:'';
   return `<div class="topbar"><div style="min-width:0"><div class="eyebrow">${eyebrow}</div><h2 style="margin-top:6px">${title}${tag}</h2>${sub?`<div class="sub">${sub}</div>`:''}</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${actions||''}</div></div>`}
 function empty(title,text,label,action,hints){return `<div class="box empty rise"><div style="font-size:24px;color:var(--ink-300)">▤</div><h3 style="margin-top:12px;font-size:18px">${title}</h3><p class="lede" style="margin:10px auto 0;font-size:14px">${text}</p>
