@@ -296,6 +296,62 @@ tbody tr:hover td{background:var(--surface-2)}
 .gtl{font-size:12px}
 .st{font-size:12.5px}
 @media(max-width:860px){.page{padding:0 14px 40px}.topbar{padding:14px}}
+
+/* ═══ DATUM · skin 3: каркас приложения, герой-карта, вход ═══ */
+.noanim .rise{animation:none!important}
+.nav .grp{font-size:11px;font-weight:600;color:var(--ink-300);padding:14px 10px 6px;letter-spacing:.02em}
+.nav .grp:first-child{padding-top:4px}
+.nav a .bdg{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:99px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;background:var(--danger);color:#fff}
+.nav a .bdg.mute{background:var(--surface);color:var(--ink-500)}
+.objpick{margin:2px 10px 6px;padding:10px 12px;border-radius:12px;background:var(--surface);display:flex;gap:10px;align-items:center;cursor:pointer;transition:.15s}
+.objpick:hover{background:var(--o50)}
+.objpick .av{width:30px;height:30px;border-radius:9px;background:var(--o500);color:#fff;display:grid;place-items:center;font-size:10.5px;font-weight:800;flex:none;letter-spacing:-.02em}
+.objpick .t{font-size:13px;font-weight:700;line-height:1.2}
+.objpick .s{font-size:11.5px;color:var(--ink-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.objpick select{position:absolute;inset:0;opacity:0;cursor:pointer;height:100%}
+.launchcard{margin:0 0 8px;padding:10px 12px;border-radius:12px;background:var(--o50);cursor:pointer}
+.launchcard .t{font-size:12.5px;font-weight:700;color:var(--o700);display:flex;justify-content:space-between}
+.launchcard .track{margin-top:7px;height:5px;background:rgba(47,99,246,.15)}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(240,242,246,.86);backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);padding:16px 24px 12px;margin-bottom:6px}
+html.dark .topbar{background:rgba(15,19,27,.86)}
+.topbar h2{font-size:22px}
+.topbar .objtag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--bg);color:var(--ink-700);box-shadow:var(--shadow);vertical-align:middle;margin-left:10px;position:relative;top:-2px}
+.fb{position:fixed;right:20px;bottom:20px;z-index:70;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:99px;background:var(--bg);color:var(--ink-700);font-weight:600;font-size:12.5px;box-shadow:var(--shadow-lg);border:1px solid var(--line)}
+.fb:hover{color:var(--o600)}
+/* герой-карта объекта */
+.hero-card{position:relative;overflow:hidden;border-radius:20px;padding:22px 24px;color:#fff;background:radial-gradient(120% 140% at 100% 0%,#5B8BFF 0%,rgba(91,139,255,0) 55%),linear-gradient(135deg,#1F4FE0 0%,#173FBF 55%,#0F2E91 100%);box-shadow:0 18px 40px -22px rgba(23,63,191,.75);display:grid;grid-template-columns:1fr auto;gap:20px;margin-bottom:12px}
+.hero-card::after{content:"";position:absolute;right:-60px;bottom:-90px;width:280px;height:280px;border-radius:50%;border:40px solid rgba(255,255,255,.06)}
+.hero-card .lbl{font-size:12.5px;opacity:.78;font-weight:500}
+.hero-card .big{font-size:36px;font-weight:800;letter-spacing:-.035em;line-height:1.1;margin-top:4px}
+.hero-card .big small{font-size:16px;font-weight:600;opacity:.7;letter-spacing:0}
+.hero-card .bar{height:8px;border-radius:99px;background:rgba(255,255,255,.18);overflow:hidden;margin-top:16px;position:relative}
+.hero-card .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:99px}
+.hero-card .row{display:flex;gap:28px;flex-wrap:wrap;margin-top:14px}
+.hero-card .row div{min-width:110px}
+.hero-card .row b{display:block;font-size:17px;font-weight:700;letter-spacing:-.02em;margin-top:2px}
+.hero-card .tag{display:inline-flex;gap:6px;align-items:center;font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.14)}
+.ring{position:relative;width:132px;height:132px;z-index:1}
+.ring svg{transform:rotate(-90deg)}
+.ring .c{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+.ring .c b{font-size:34px;font-weight:800;letter-spacing:-.04em;line-height:1}
+.ring .c span{font-size:11.5px;opacity:.8;display:block;margin-top:2px}
+/* вход */
+.auth{grid-template-columns:1fr 1fr;background:var(--canvas)}
+.auth .left{background:radial-gradient(90% 80% at 100% 0%,#5B8BFF 0%,rgba(91,139,255,0) 60%),linear-gradient(150deg,#1F4FE0 0%,#173FBF 50%,#0B2479 100%);color:#fff;border-right:none;position:relative;overflow:hidden}
+.auth .left::after{content:"";position:absolute;right:-140px;bottom:-160px;width:520px;height:520px;border-radius:50%;border:70px solid rgba(255,255,255,.05)}
+.auth .left .eyebrow{color:rgba(255,255,255,.75)!important}
+.auth .left .mark b{color:#fff}
+.auth .hero h1{color:#fff;font-size:clamp(34px,3.6vw,48px);max-width:14ch}
+.auth .hero p{color:rgba(255,255,255,.82)}
+.auth .kpis div{background:rgba(255,255,255,.1);box-shadow:none;backdrop-filter:blur(6px)}
+.auth .kpis b{color:#fff}.auth .kpis span{color:rgba(255,255,255,.75)}
+.auth .preview{margin-top:30px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:640px;position:relative;z-index:1}
+.auth .preview div{background:#fff;color:var(--ink);border-radius:14px;padding:14px 16px;box-shadow:0 20px 40px -24px rgba(0,0,0,.6)}
+.auth .preview span{font-size:11.5px;color:var(--ink-500);display:block}
+.auth .preview b{font-size:20px;font-weight:800;letter-spacing:-.03em;display:block;margin-top:4px}
+.auth .preview i{font-style:normal;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-block;margin-top:6px}
+.auth .right .logincard{background:var(--bg);border-radius:20px;box-shadow:var(--shadow-lg);padding:30px}
+@media(max-width:860px){.hero-card{grid-template-columns:1fr}.ring{display:none}.topbar{position:static}}
 </style>
 </head>
 <body>
@@ -316,7 +372,7 @@ const rub=n=>(n||0).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFract
 const plural=(n,a,b,c)=>{const m10=n%10,m100=n%100;return m10===1&&m100!==11?a:m10>=2&&m10<=4&&(m100<10||m100>=20)?b:c};
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 const el=()=>document.getElementById('app');
-const MARK=(sz=22,ink='currentColor',dot='#B9762B')=>`<svg viewBox="0 0 32 32" width="${sz}" height="${sz}" aria-label="DATUM"><path d="M6.4 8.8 L26 13.4 L14 26.8 Z" fill="none" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/><g fill="${ink}"><circle cx="6.4" cy="8.8" r="2.3"/><circle cx="26" cy="13.4" r="2.3"/><circle cx="14" cy="26.8" r="2.3"/></g><circle cx="15.6" cy="16.2" r="3.4" fill="${dot}"/></svg>`;
+const MARK=(sz=22,ink='currentColor',dot='#2F63F6')=>`<svg viewBox="0 0 32 32" width="${sz}" height="${sz}" aria-label="DATUM"><path d="M6.4 8.8 L26 13.4 L14 26.8 Z" fill="none" stroke="${ink}" stroke-width="1.8" stroke-linejoin="round"/><g fill="${ink}"><circle cx="6.4" cy="8.8" r="2.3"/><circle cx="26" cy="13.4" r="2.3"/><circle cx="14" cy="26.8" r="2.3"/></g><circle cx="15.6" cy="16.2" r="3.4" fill="${dot}"/></svg>`;
 
 const VERSION='0.1 · пилот';
 let S={screen:'welcome',step:0,company:null,team:[],objects:[],estimates:[],docs:[],telegram:false,page:'dash',busy:null,err:null,key:null,synced:null,feedback:false,changelog:false,tenders:[],eis:null,eisErr:null,tq:'',tsearch:'',tview:'eis',schedule:null,id:null,dtab:'id',costs:null,pay:null,ai:null,perObj:null,otherObjs:null,tasks:null,orders:null,suppliers:null,cx:null,risks:null};
@@ -363,12 +419,13 @@ async function loadCompany(key){key=String(key||'').replace(/\D/g,'');if(key.len
 let _saveT=null;
 function render(){
   gtKeepScroll();
+  const vk=[S.screen,S.step,S.page,S.rtab,S.dtab,S.tview,(S.objects[0]||{}).code].join('|');el().classList.toggle('noanim',vk===render._vk);render._vk=vk;
   el().innerHTML=(S.screen==='welcome'?welcomeView():S.screen==='wizard'?wizardView():appView())+feedbackUI();
   paintSync();gtRestoreScroll();
   if(S.key&&S.screen!=='welcome'){clearTimeout(_saveT);_saveT=setTimeout(persist,400)}
 }
 window.addEventListener('beforeunload',()=>{if(S.key&&S.screen!=='welcome'){try{localStorage.setItem('datum:'+S.key,JSON.stringify(snapshot()));localStorage.setItem('datum:last',S.key)}catch(e){}}});
-function toast(t){const p=document.querySelector('.toast');if(p)p.remove();const d=document.createElement('div');d.className='toast';d.innerHTML='<span style="color:#DBA765">●</span>'+t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
+function toast(t){const p=document.querySelector('.toast');if(p)p.remove();const d=document.createElement('div');d.className='toast';d.innerHTML='<span style="color:#7C9AFF">●</span>'+t;document.body.appendChild(d);setTimeout(()=>d.remove(),3200)}
 function theme(){document.documentElement.classList.toggle('dark')}
 function go(p){S.page=p;render();window.scrollTo(0,0)}
 function busy(label){S.busy=label;S.err=null;render()}
@@ -604,29 +661,31 @@ const int=(a,b)=>Math.floor(a+Math.random()*(b-a+1));
 /* ═══ Приветствие ═══ */
 function welcomeView(){return `<div class="auth">
   <div class="left">
-    <div class="mark">${MARK(26,'var(--ink)')}<b>DATUM</b></div>
-    <div class="hero rise">
-      <div class="eyebrow" style="margin-bottom:16px;color:var(--o700)">Первый вход · пустая система</div>
-      <h1>Ваша компания в системе за двадцать минут</h1>
-      <p>Ничего заполнять вручную не нужно. Вы приносите то, что и так есть: контракт, смету в Excel и папку документов. Система читает их сама, а вы проверяете и подтверждаете.</p>
-      <div class="kpis"><div><b>5</b><span>шагов до рабочей системы</span></div><div><b>3</b><span>файла, с которых всё начинается</span></div><div><b>14</b><span>дней бесплатно, без карты</span></div></div>
+    <div class="mark" style="position:relative;z-index:1">${MARK(28,'#fff','#9FBBFF')}<b>DATUM</b></div>
+    <div class="hero rise" style="position:relative;z-index:1">
+      <div class="eyebrow" style="margin-bottom:14px;font-size:13px">Операционная система строительного подрядчика</div>
+      <h1>Контракты, деньги и документы — в одном окне</h1>
+      <p>Загрузите контракт и смету — система сама соберёт график, план затрат, исполнительную документацию и покажет, где можно потерять деньги.</p>
+      <div class="preview">
+        <div><span>Здоровье контракта</span><b>82<span style="display:inline;font-size:13px;color:var(--ink-300)"> / 100</span></b><i style="background:var(--ok-50);color:var(--ok)">под контролем</i></div>
+        <div><span>Прибыль по прогнозу</span><b>782 тыс ₽</b><i style="background:var(--o50);color:var(--o700)">маржа 34%</i></div>
+        <div><span>Документы ИД</span><b>38 из 44</b><i style="background:var(--warn-50);color:var(--warn)">6 АОСР к подписи</i></div>
+      </div>
     </div>
-    <div style="display:flex;gap:24px"><span class="eyebrow">Файлы читаются в браузере</span><span class="eyebrow">Ничего никуда не отправляется</span></div>
+    <div style="display:flex;gap:22px;flex-wrap:wrap;position:relative;z-index:1;font-size:12.5px;color:rgba(255,255,255,.75)"><span>✓ 44-ФЗ и исполнительная документация</span><span>✓ Файлы читаются в браузере</span><span>✓ 14 дней бесплатно</span></div>
   </div>
-  <div class="right"><div class="rise" style="width:100%;max-width:420px">
-    <div class="eyebrow" style="color:var(--o700)">Пилотная версия</div>
-    <h2 style="margin-top:10px">Вход в компанию</h2>
-    <p class="lede" style="margin-top:8px;font-size:14px">Введите ИНН компании. Если она уже заведена — откроются её данные, если нет — начнём с чистого листа. Всё, что вы внесёте, сохраняется и будет на месте при следующем входе.</p>
-    <div class="field" style="margin-top:20px"><span class="eyebrow">ИНН компании</span><input id="inn_gate" placeholder="10 или 12 цифр" inputmode="numeric" onkeydown="if(event.key==='Enter')loadCompany(this.value)"></div>
-    <button class="btn pri" style="width:100%;margin-top:12px;height:46px;font-size:15px" onclick="loadCompany(document.getElementById('inn_gate').value)">Войти в компанию →</button>
-    <div style="display:flex;justify-content:space-between;margin-top:10px;align-items:center"><span class="eyebrow" style="font-weight:600">версия ${VERSION}</span><button class="btn sm ghost" onclick="importData()">Есть файл с данными? Загрузить</button></div>
-    <span id="sync" class="eyebrow" style="display:block;margin-top:6px;font-weight:600"></span>
-    <div class="box soft" style="padding:16px;margin-top:18px">
-      <div class="eyebrow" style="color:var(--o700)">Что понадобится</div>
-      <div style="font-size:13.5px;color:var(--ink-500);line-height:1.8;margin-top:8px">
-        <b style="color:var(--o500)">01</b> ИНН компании<br><b style="color:var(--o500)">02</b> Контракт — PDF или Word<br><b style="color:var(--o500)">03</b> Смета в Excel и папка с документами<br><b style="color:var(--o500)">04</b> Телефоны прораба и снабженца</div>
+  <div class="right"><div class="logincard rise" style="width:100%;max-width:420px">
+    <div style="font-size:13px;color:var(--o600);font-weight:600">Пилотная версия ${VERSION}</div>
+    <h2 style="margin-top:6px;font-size:24px">Вход в компанию</h2>
+    <p style="margin-top:8px;font-size:13.5px;color:var(--ink-500)">Введите ИНН. Если компания уже заведена — откроются её данные, если нет — реквизиты подтянутся из ЕГРЮЛ.</p>
+    <div class="field" style="margin-top:20px"><span class="eyebrow">ИНН компании</span><input id="inn_gate" placeholder="10 или 12 цифр" inputmode="numeric" style="height:46px;font-size:16px;letter-spacing:.04em" onkeydown="if(event.key==='Enter')loadCompany(this.value)"></div>
+    <button class="btn pri" style="width:100%;margin-top:12px;height:46px;font-size:15px" onclick="loadCompany(document.getElementById('inn_gate').value)">Войти</button>
+    <button class="btn ghost" style="width:100%;margin-top:6px" onclick="importData()">Есть файл с данными — загрузить</button>
+    <span id="sync" style="display:block;margin-top:6px;font-size:11.5px;color:var(--ink-300);text-align:center"></span>
+    <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line)">
+      <div style="font-size:12.5px;font-weight:600;color:var(--ink-700)">Что понадобится</div>
+      <div style="display:grid;gap:8px;margin-top:10px">${[['ИНН компании','реквизиты подтянутся сами'],['Контракт','PDF или Word'],['Смета','SmetaWIZARD, ГрандСмета, Excel'],['Телефоны прораба и снабженца','для Telegram']].map(([t,d],i)=>`<div style="display:flex;gap:10px;align-items:center;font-size:13px"><span style="width:24px;height:24px;border-radius:8px;background:var(--o50);color:var(--o600);font-weight:700;font-size:11.5px;display:grid;place-items:center;flex:none">${i+1}</span><span><b style="font-weight:600">${t}</b> <span style="color:var(--ink-500)">· ${d}</span></span></div>`).join('')}</div>
     </div>
-    <p class="eyebrow" style="margin-top:14px;line-height:1.7;font-weight:600">Нет файлов под рукой — на каждом шаге есть «показать на примере»</p>
   </div></div></div>`}
 
 /* ═══ Мастер ═══ */
@@ -834,24 +893,36 @@ team:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path
 const ico=k=>`<svg viewBox="0 0 24 24" aria-hidden="true">${ICO[k]||''}</svg>`;
 const NAV=[['dash','Главная','◧'],['objects','Объекты','▣'],['contract','Контракт','§'],['schedule','График работ','⌗'],['tasks','Задачи','☑'],['estimates','Сметы','∑'],['procure','Снабжение','⧉'],['finance','Деньги','₽'],['docs','Документы','▥'],['risks','Риски','◬'],['tenders','Закупки','◎'],['analytics','Аналитика','⋮⋮'],['ai','ИИ-ассистент','✦'],['team','Команда','◍']];
 function progress(){return [['Компания заведена',!!S.company,"S.screen='wizard';S.step=0;render()"],['Команда приглашена',S.team.length>0,"S.screen='wizard';S.step=1;render()"],['Первый объект создан',S.objects.length>0,"S.screen='wizard';S.step=2;render()"],['Смета загружена',S.estimates.length>0,"S.screen='wizard';S.step=3;render()"],['Документы загружены',S.docs.length>0,"S.screen='wizard';S.step=4;render()"],['Telegram подключён',S.telegram,"S.screen='wizard';S.step=4;render()"]]}
-function appView(){restoreObjects();const list=progress(),done=list.filter(x=>x[1]).length;
+const NAV_GROUPS=[[null,['dash']],['Объект',['contract','schedule','tasks','estimates','procure','finance','docs','risks']],['Компания',['objects','tenders','analytics','team','ai']]];
+const OBJ_PAGES=new Set(['contract','schedule','tasks','estimates','procure','finance','docs','risks']);
+function navBadge(k){try{const code=(S.objects[0]||{}).code;if(!code)return '';
+  if(k==='tasks'){const n=(S.tasks||[]).filter(t=>t.obj===code&&t.status!=='done'&&t.due&&fromISO(t.due)<TODAY).length;return n?`<span class="bdg">${n}</span>`:''}
+  if(k==='risks'){const n=(S.risks||[]).filter(r=>r.obj===code&&r.status!=='closed'&&riskLevel(r.p,r.i)==='critical').length;return n?`<span class="bdg">${n}</span>`:''}
+  if(k==='objects'&&S.objects.length>1)return `<span class="bdg mute">${S.objects.length}</span>`;}catch(e){}return ''}
+function objPick(){const o=S.objects[0];if(!o)return `<div class="objpick" onclick="beginNewObject()"><div class="av" style="background:var(--ink-300)">＋</div><div style="min-width:0"><div class="t">Добавить объект</div><div class="s">контракт и смета из файлов</div></div></div>`;
+  const ini=String(o.code||'OB').replace(/[^А-ЯA-Z0-9]/gi,'').slice(0,4);
+  return `<div class="objpick" style="position:relative" ${S.objects.length<2?`onclick="go('objects')"`:''} title="${S.objects.length>1?'Переключить объект':'Карточка объекта'}"><div class="av">${esc(ini)}</div><div style="min-width:0;flex:1"><div class="t">${esc(o.code)}</div><div class="s">${esc(o.subject||o.customer||'')}</div></div><span style="color:var(--ink-300);font-size:12px">${S.objects.length>1?'⇅':'›'}</span>${S.objects.length>1?`<select onchange="switchObject(this.value)">${S.objects.map(x=>`<option value="${esc(x.code)}"${x===o?' selected':''}>${esc(x.code)}${x.subject?' · '+esc(x.subject.slice(0,30)):''}</option>`).join('')}</select>`:''}</div>`}
+function appView(){restoreObjects();const list=progress(),done=list.filter(x=>x[1]).length;const lbl=Object.fromEntries(NAV.map(([k,l])=>[k,l]));
+  const link=(cls,onclick,ic,text,extra)=>`<a class="nav" onclick="${onclick}" style="display:flex;align-items:center;gap:10px;height:30px;padding:0 10px;font-size:12.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">${ic}</span>${text}${extra||''}</a>`;
   return `<div class="shell"><aside class="rail">
-    <div class="rail-top"><div class="mark">${MARK(24,'var(--ink)')}<div><b style="display:block">DATUM</b><span class="eyebrow" style="display:block;font-size:9.5px;margin-top:2px">${S.company?esc(S.company.name.replace('ООО ','')):'компания'}</span></div></div></div>${objSwitcher()}
-    <nav class="nav">${NAV.map(([k,l,ic])=>`<a class="${S.page===k?'on':''}" onclick="go('${k}')"><span class="ic">${ico(k)}</span>${l}</a>`).join('')}</nav>
+    <div class="rail-top"><div class="mark">${MARK(24,'var(--ink)')}<div><b style="display:block">DATUM</b><span style="display:block;font-size:11px;color:var(--ink-500);margin-top:1px;font-weight:500">${S.company?esc(S.company.name.replace(/^ООО\s*/,'')):'компания'}</span></div></div></div>
+    ${objPick()}
+    <nav class="nav">${NAV_GROUPS.map(([g,keys])=>(g?`<div class="grp">${g}</div>`:'')+keys.map(k=>`<a class="${S.page===k?'on':''}" onclick="go('${k}')"><span class="ic">${ico(k)}</span>${lbl[k]}${navBadge(k)}</a>`).join('')).join('')}</nav>
     <div class="rail-foot">
-      <a class="nav" onclick="S.changelog=true;render()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">✦</span>Что нового<span class="eyebrow" style="margin-left:auto;font-size:9.5px">${VERSION}</span></a>
-      <a class="nav" onclick="exportData()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">↧</span>Выгрузить данные</a>
-      <a class="nav" onclick="importData()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">↥</span>Загрузить из файла</a>
-      <a class="nav" onclick="theme()" style="display:flex;align-items:center;gap:10px;height:34px;padding:0 11px;font-size:13.5px;color:var(--ink-500);cursor:pointer;border-radius:8px"><span class="ic">◑</span>Тема</a>
-      <div id="sync" class="eyebrow" style="padding:6px 11px 4px;font-size:9.5px;font-weight:600"></div>
-      <div class="who" style="margin-top:6px"><div style="width:32px;height:32px;border-radius:9px;background:var(--o600);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'В')}</div>
-        <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,''))}</div><div class="eyebrow" style="margin-top:2px;font-size:10px">пилот · ИНН ${esc(S.key||'')}</div></div>
-        <button onclick="resetAll()" title="Начать заново" style="color:var(--ink-300);font-size:15px">⟲</button></div></div></aside>
+      ${done<list.length?`<div class="launchcard" onclick="go('dash')"><div class="t"><span>Запуск системы</span><span>${done}/${list.length}</span></div><div class="track"><div class="fill" style="width:${done/list.length*100}%"></div></div></div>`:''}
+      ${link('',"S.changelog=true;render()",'✦','Что нового',`<span style="margin-left:auto;font-size:10.5px;color:var(--ink-300)">${VERSION}</span>`)}
+      ${link('',"exportData()",'↧','Выгрузить данные')}
+      ${link('',"importData()",'↥','Загрузить из файла')}
+      ${link('',"theme()",'◑','Светлая / тёмная тема')}
+      <div id="sync" style="padding:4px 10px 2px;font-size:10.5px;color:var(--ink-300)"></div>
+      <div class="who" style="margin-top:6px"><div style="width:32px;height:32px;border-radius:10px;background:var(--o500);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,'').split(' ').filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'В')}</div>
+        <div style="min-width:0;flex:1"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(((S.company&&S.company.head)||'Владелец').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,''))}</div><div style="margin-top:1px;font-size:11px;color:var(--ink-500)">ИНН ${esc(S.key||'')}</div></div>
+        <button onclick="resetAll()" title="Выйти и начать заново" style="color:var(--ink-300);font-size:15px">⟲</button></div></div></aside>
   <main class="main">
-    ${done<list.length?`<div class="launch"><span><b>Запуск</b> · шаг ${done} из ${list.length}</span><div class="track" style="flex:1;max-width:220px"><div class="fill" style="width:${done/list.length*100}%"></div></div><button class="btn sm ghost" style="margin-left:auto" onclick="go('dash')">Чек-лист →</button></div>`:''}
     ${({dash:pDash,objects:pObjects,schedule:pSchedule,docs:pDocs,estimates:pEstimates,finance:pFinance,tenders:pTenders,ai:pAI,team:pTeam,contract:pContract,tasks:pTasks,procure:pProcure,risks:pRisks,analytics:pAnalytics})[S.page]()}
   </main></div>`}
-function head(eyebrow,title,sub,actions){return `<div class="topbar"><div><div class="eyebrow">${eyebrow}</div><h2 style="margin-top:6px">${title}</h2>${sub?`<div class="sub">${sub}</div>`:''}</div><div style="display:flex;gap:8px;align-items:center">${actions||''}</div></div>`}
+function head(eyebrow,title,sub,actions){const o=S.objects[0];const tag=o&&OBJ_PAGES.has(S.page)?`<span class="objtag"><span style="width:7px;height:7px;border-radius:99px;background:var(--o500);display:inline-block"></span>${esc(o.code)}</span>`:'';
+  return `<div class="topbar"><div style="min-width:0"><div class="eyebrow">${eyebrow}</div><h2 style="margin-top:6px">${title}${tag}</h2>${sub?`<div class="sub">${sub}</div>`:''}</div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${actions||''}</div></div>`}
 function empty(title,text,label,action,hints){return `<div class="box empty rise"><div style="font-size:24px;color:var(--ink-300)">▤</div><h3 style="margin-top:12px;font-size:18px">${title}</h3><p class="lede" style="margin:10px auto 0;font-size:14px">${text}</p>
   ${label?`<button class="btn pri" style="margin-top:18px" onclick="${action}">${label}</button>`:''}
   ${hints?`<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:8px;text-align:left">${hints.map((h,i)=>`<div style="display:flex;gap:10px;font-size:13px;color:var(--ink-500)"><b style="color:var(--o500)">0${i+1}</b><span>${h}</span></div>`).join('')}</div>`:''}</div>`}
@@ -859,16 +930,26 @@ function stat(l,v,h,tone){return `<div class="box stat rise"><div class="eyebrow
 
 function pDash(){const o=S.objects[0],e=S.estimates[0],list=progress(),done=list.filter(x=>x[1]).length;const todo=list.filter(x=>!x[1]);
   const hello=(h=>h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер')(new Date().getHours());
-  const who=((S.company&&S.company.head)||'').replace(/^(генеральный|исполнительный)?\s*директор\s*/i,'').split(' ')[0]||'';
-  const sub=o?`${TODAY.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'})} · ${S.objects.length} ${plural(S.objects.length,'объект','объекта','объектов')} в работе`:'Система пока пустая — заведите первый объект';
-  return head('Обзор',`${hello}${who?', '+esc(who):''}`,sub,o?`<button class="btn sm" onclick="go('risks')">Риски</button><button class="btn pri sm" onclick="go('ai')">Спросить ИИ</button>`:'')+`<div class="page">
+  const dstr=TODAY.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  const sub=o?`${dstr[0].toUpperCase()+dstr.slice(1)} · ${S.objects.length} ${plural(S.objects.length,'объект','объекта','объектов')} в работе`:'Система пока пустая — заведите первый объект';
+  return head('Обзор',hello,sub,o?`<button class="btn sm" onclick="go('risks')">Риски</button><button class="btn pri sm" onclick="go('ai')">Спросить ИИ</button>`:'')+`<div class="page">
   ${o?(()=>{autoTasks();autoRisks();const code=o.code||'';const tk=tasks().filter(t=>t.obj===code&&t.status!=='done');const due=tk.filter(t=>t.due&&fromISO(t.due)<=TODAY);const rk=risks().filter(r=>r.obj===code&&r.status!=='closed').sort((a,b)=>b.p*b.i-a.p*a.i);const hi=rk.filter(r=>['critical','high'].includes(riskLevel(r.p,r.i)));const H=contractHealth();const X=typeof rkCtx==='function'?rkCtx():null;const M=X?X.M:null;
     const cEnd=S.schedule?fromISO(S.schedule.contractEnd):(o.end?pdRu(o.end):null);const left=cEnd?Math.round((cEnd-TODAY)/864e5):null;
-    return `<div class="grid g4" style="margin-bottom:12px">
-      ${stat('Здоровье контракта',`<span style="color:var(--${H.color})">${H.score}</span><span style="font-size:14px;color:var(--ink-300);font-weight:600"> / 100</span>`,`<span class="chip ${H.color==='ok'?'ok':H.color==='warn'?'warn':'bad'}">${H.score>=80?'под контролем':H.score>=55?'есть что исправить':'нужны действия'}</span>`)}
-      ${stat('Прибыль по прогнозу',X&&X.e?m(X.profit):'—',X&&X.e?`<span class="chip ${X.margin<10?'bad':X.margin<20?'warn':'ok'}">маржа ${X.margin}%</span><span class="chip">контракт ${m(X.price)}</span>`:'<span class="chip warn">нет сметы</span>',X&&X.e&&X.profit<0?'danger':undefined)}
-      ${stat('Деньги в объекте',M?m(M.own):'—',M?(M.minBal<0?`<span class="chip bad">разрыв ${m(-M.minBal)} к ${ruD(M.minWeek.to)}</span>`:'<span class="chip ok">разрыва нет</span>'):'',M&&M.minBal<0?'warn':undefined)}
-      ${stat('До срока сдачи',left!=null?`${left} <span style="font-size:14px;color:var(--ink-300);font-weight:600">дн.</span>`:'—',H.over>0?`<span class="chip bad">прогноз +${H.over} дн. к сроку</span>`:H.lag?`<span class="chip warn">отставание ${H.lag} дн.</span>`:'<span class="chip ok">идём по графику</span>',H.over>0?'danger':undefined)}</div>
+    const mt=objMetrics(code)||{};const price=(X&&X.price)||o.price||0;const acted=M?M.acted:0,recv=M?M.received:0;const prog=mt.prog||0;const R=52,C=2*Math.PI*R;const hc=H.score>=80?'#4ADE80':H.score>=55?'#FBBF24':'#FF8A8A';
+    const critN=rk.filter(r=>riskLevel(r.p,r.i)==='critical').length;
+    return `<div class="hero-card rise"><div style="position:relative;z-index:1;min-width:0">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><span class="tag">● ${esc(code)}</span><span class="lbl" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(o.subject||'')}${o.customer?' · '+esc(o.customer.slice(0,50)):''}</span></div>
+        <div class="lbl" style="margin-top:16px">Цена контракта</div>
+        <div class="big num">${m(price).replace(' ₽','')}<small> ₽</small></div>
+        <div class="bar"><i style="width:${Math.min(100,prog)}%;background:rgba(255,255,255,.55)"></i><i style="width:${price?Math.min(100,recv/price*100):0}%;background:#4ADE80"></i></div>
+        <div class="row"><div><span class="lbl">Выполнено работ</span><b class="num">${prog}%</b></div><div><span class="lbl">Сдано актами</span><b class="num">${m(acted)}</b></div><div><span class="lbl">Получено от заказчика</span><b class="num">${m(recv)}</b></div><div><span class="lbl">Осталось получить</span><b class="num">${m(Math.max(0,price-recv))}</b></div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1;cursor:pointer" onclick="go('contract')" title="Из чего складывается оценка"><div class="ring"><svg width="132" height="132"><circle cx="66" cy="66" r="${R}" stroke="rgba(255,255,255,.16)" stroke-width="11" fill="none"/><circle cx="66" cy="66" r="${R}" stroke="${hc}" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="${C*H.score/100} ${C}"/></svg><div class="c"><div><b class="num">${H.score}</b><span>здоровье<br>контракта</span></div></div></div><span class="tag">${H.score>=80?'под контролем':H.score>=55?'есть что исправить':'нужны действия'} →</span></div></div>
+    <div class="grid g4" style="margin-bottom:12px">
+      ${stat('Прибыль по прогнозу',X&&X.e?m(X.profit):'—',X&&X.e?`<span class="chip ${X.margin<10?'bad':X.margin<20?'warn':'ok'}">маржа ${X.margin}%</span>`:'<span class="chip warn">нет сметы</span>',X&&X.e&&X.profit<0?'danger':undefined)}
+      ${stat('Своих денег в объекте',M?m(M.own):'—',M?(M.minBal<0?`<span class="chip bad">разрыв ${m(-M.minBal)} к ${ruD(M.minWeek.to)}</span>`:'<span class="chip ok">разрыва нет</span>'):'')}
+      ${stat('До срока сдачи',left!=null?`${left} <span style="font-size:14px;color:var(--ink-300);font-weight:600">дн.</span>`:'—',H.over>0?`<span class="chip bad">прогноз +${H.over} дн. к сроку</span>`:H.lag?`<span class="chip warn">отставание ${H.lag} дн.</span>`:'<span class="chip ok">идём по графику</span>',H.over>0?'danger':undefined)}
+      ${stat('Критические риски',critN,critN?'<span class="chip bad">действовать сегодня</span>':'<span class="chip ok">нет</span>',critN?'danger':undefined)}</div>
     <div class="grid g2" style="margin-bottom:12px;align-items:start">
       <div class="box rise"><div class="box-h"><div><div class="t">Сегодня</div><div class="s">${due.length?due.length+' '+plural(due.length,'задача','задачи','задач')+' требуют внимания':'Срочных задач нет'} · открытых ${tk.length}</div></div><button class="btn sm ghost" onclick="go('tasks')">Все задачи →</button></div>
         <div style="padding:4px 18px 10px">${due.length?due.slice(0,6).map(t=>`<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span class="chip ${fromISO(t.due)<TODAY?'bad':'warn'}">${fromISO(t.due)<TODAY?'просрочено':'сегодня'}</span><span style="flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</span><span style="font-size:12px;color:var(--ink-500);white-space:nowrap">${esc((t.assignee||'—').split(' ').slice(-2).join(' '))}</span>${t.link?`<button class="btn sm ghost" style="padding:2px 8px" onclick="go('${t.link}')">→</button>`:''}</div>`).join(''):tk.slice(0,4).map(t=>`<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px"><span class="chip">${t.due?'до '+ruD(t.due):'без срока'}</span><span style="flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(t.title)}</span><span style="font-size:12px;color:var(--ink-500)">${esc((t.assignee||'—').split(' ').slice(-2).join(' '))}</span></div>`).join('')||'<div style="padding:10px 0;font-size:13px;color:var(--ink-500)">Задачи появятся из графика, актов и поставок.</div>'}</div></div>
@@ -878,8 +959,10 @@ function pDash(){const o=S.objects[0],e=S.estimates[0],list=progress(),done=list
     <div class="grid g2" style="align-items:start">
       <div class="box rise"><div class="box-h"><div><div class="t">${esc(o.code)} · ${esc((o.subject||'объект').slice(0,60))}</div><div class="s">Из контракта и сметы</div></div><button class="btn sm ghost" onclick="go('objects')">Объект →</button></div>
         <div style="padding:10px 18px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;font-size:13.5px">${[['Заказчик',o.customer],['Контракт','№ '+(o.number||'—')+(o.price?' · '+m(o.price):'')],['Сроки',(o.start||'?')+' — '+(o.end||'?')],['Оплата',o.payTerm?'в течение '+o.payTerm+' дн. после приёмки':null],['Аванс',o.advance],['Неустойка',o.penalty],['Адрес',o.address],['Смета',e?e.items.length+' позиций на '+m(e.total):null]].map(([l,v])=>`<div style="display:grid;gap:2px;min-width:0"><span class="eyebrow">${l}</span><span style="color:${v?'var(--ink)':'var(--ink-300)'};font-weight:${v?500:400};overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(v||'')}">${esc(v||'не указано')}</span></div>`).join('')}</div></div>
-      <div class="box rise"><div class="box-h"><div><div class="t">Что делать дальше</div><div class="s">Следующие шаги по объекту${todo.length?' · запуск: осталось '+todo.length:''}</div></div></div>
-        <div style="padding:8px 18px 14px;display:grid;gap:8px">${todo.slice(0,2).map(([t,,run])=>`<div class="check" style="padding:10px 12px" onclick="${run}"><span style="color:var(--o500)">→</span><div style="font-weight:600;font-size:13.5px">${t}</div></div>`).join('')}${[[!S.docs.length,'Загрузить документы объекта','Без комплекта заказчик вправе не принять этап',"go('docs')"],[!S.telegram,'Подключить Telegram прорабу','Отчёт с объекта и фото приходят в систему',"S.screen='wizard';S.step=4;render()"],[true,'Настроить поиск закупок','Подходящие тендеры с оценкой',"go('tenders')"]].filter(x=>x[0]).slice(0,3-Math.min(2,todo.length)).map(([,t,d,run])=>`<div class="check" style="padding:10px 12px" onclick="${run}"><span style="color:var(--o500)">→</span><div><div style="font-weight:600;font-size:13.5px">${t}</div><div style="font-size:12.5px;color:var(--ink-500);margin-top:2px">${d}</div></div></div>`).join('')}</div></div></div>`})():
+      <div class="box rise"><div class="box-h"><div><div class="t">Что делать дальше</div><div class="s">Система подсказывает следующий шаг</div></div></div>
+        <div style="padding:8px 18px 14px;display:grid;gap:8px">${(()=>{const ACT={'Компания заведена':['Заполнить реквизиты компании','Нужны для актов, писем и счетов'],'Команда приглашена':['Пригласить прораба и снабженца','Каждый видит только своё'],'Первый объект создан':['Завести объект','Контракт и смета из файлов'],'Смета загружена':['Загрузить смету','План затрат и заявка снабженцу'],'Документы загружены':['Загрузить документы объекта','Без комплекта заказчик вправе не принять этап'],'Telegram подключён':['Подключить Telegram прорабу','Отчёт с объекта и фото приходят в систему']};
+          const items=todo.map(([t,,run])=>[...(ACT[t]||[t,'']),run]).concat([['Ключевая ставка ЦБ для пеней','Укажите в условиях контракта — система посчитает пени',"go('contract');S.cxSet=true;render()",!(cx().fields.keyRate)],['Настроить поиск закупок','Подходящие тендеры с оценкой',"go('tenders')",true]].filter(x=>x[3]));
+          return items.slice(0,4).map(([t,d,run])=>`<div class="check" style="padding:10px 12px" onclick="${run}"><span style="color:var(--o500);font-weight:700">→</span><div><div style="font-weight:600;font-size:13.5px">${t}</div>${d?`<div style="font-size:12.5px;color:var(--ink-500);margin-top:2px">${d}</div>`:''}</div></div>`).join('')})()}</div></div></div>`})():
   `${done<list.length?`<div class="box rise" style="padding:18px 20px;margin-bottom:12px"><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div><div class="eyebrow" style="color:var(--o700)">чек-лист запуска</div><div style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin-top:2px">Сделано ${done} из ${list.length}</div></div><div class="track" style="flex:1;min-width:180px;max-width:320px;margin-left:auto"><div class="fill" style="width:${done/list.length*100}%"></div></div></div>
     <div style="display:grid;gap:6px;margin-top:12px">${list.map(([t,ok,run])=>`<div class="check ${ok?'done':''}" style="padding:10px 12px" onclick="${ok?'':run}"><span class="tick">✓</span><div style="flex:1;font-weight:600;font-size:13.5px">${t}</div>${ok?'<span class="chip ok">готово</span>':'<span style="color:var(--o700);font-size:12.5px;font-weight:600">открыть →</span>'}</div>`).join('')}</div></div>`:''}
   ${empty('Пока пусто — и это нормально','Система наполняется из ваших документов, а не вручную. Загрузите контракт — появятся объект, график и перечень документов. Загрузите смету — появится план затрат.','Завести первый объект',"S.screen='wizard';S.step=2;render()",['Контракт — файлом PDF или Word, система прочитает его сама','Смета — из SmetaWIZARD, ГрандСметы или обычного Excel','Документы — папкой, типы определятся по названиям'])}`}</div>`}
@@ -2323,7 +2406,7 @@ function pTenders(){
   const upd=e&&e.updatedAt?new Date(e.updatedAt):null;
   const tone=e?.status==='ok'?'ok':e?.status==='partial'?'warn':'bad';
   const stMsg=!e?'загружаем…':e.status==='ok'?'ЕИС опрошена '+(upd?upd.toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''):
-    e.status==='pending'?'робот ещё не запускался — первые данные появятся после первого запуска':(e.message||'ЕИС недоступна');
+    e.status==='pending'?'робот ещё не запускался — первые данные появятся после первого запуска':(/timed out|URLError|urlopen|HTTP/i.test(e.message||'')?'ЕИС не отвечает роботу: zakupki.gov.ru закрыт для зарубежных серверов. Нужен сервер в России — после переноса закупки пойдут сами':(e.message||'ЕИС недоступна'));
   return head('Продажи','Закупки',c?`Отбор под ваш профиль: ${esc(c.spec||'—')}`:'Заполните профиль компании — по нему считается оценка',
     `<button class="btn sm" onclick="loadEis(true)">Обновить</button><button class="btn pri sm" onclick="toast('Сохранённые поиски настраиваются в data/searches.json — пришлите мне, что искать, добавлю за минуту')">Настроить поиск</button>`)+`<div class="page">
   <div style="display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px">
@@ -2350,7 +2433,7 @@ function pTenders(){
       <td style="text-align:right;white-space:nowrap">${taken.has(key)?'<span class="chip ok">в работе</span>':`<button class="btn sm pri" onclick="takeTender('${esc(key)}')">Взять в работу</button>`} <a class="btn sm ghost" href="${esc(t.url)}" target="_blank" rel="noopener">ЕИС ↗</a></td></tr>`}).join('')}
   </tbody></table></div></div>`:
   (e&&e.status!=='pending'&&e.status!=='error'&&e.tenders&&e.tenders.length?empty('По этому запросу ничего нет','Сбросьте поиск или выберите другой сохранённый набор.','Показать все',"S.tq='';S.tsearch='';render()"):
-   empty('Данных из ЕИС пока нет',e&&e.status==='error'?'Робот не смог получить ответ от zakupki.gov.ru. Это видно сразу, а не через неделю: '+esc(e.message||''):'Робот опрашивает ЕИС каждые два часа по сохранённым поискам и кладёт результат сюда. Первые закупки появятся после первого запуска.','Обновить','loadEis(true)'))}
+   empty('Данных из ЕИС пока нет',e&&e.status==='error'?'Сайт zakupki.gov.ru не пускает робота: он работает на зарубежном сервере. Решение — перенести робота на сервер в России, это уже в плане. Пока закупку можно взять в работу вручную по номеру.':'Робот опрашивает ЕИС каждые два часа по сохранённым поискам и кладёт результат сюда. Первые закупки появятся после первого запуска.','Обновить','loadEis(true)'))}
   </div>`}`}
 function pTeam(){if(!S.team.length)return head('Компания','Команда','Пока только вы')+`<div class="page">${empty('Команда приглашается по ссылке','Каждый видит только своё: прораб — свои объекты, снабженец — заявки, тендерный менеджер — закупки. Финансы закрыты для всех, кроме руководителя и бухгалтера.','Пригласить людей',"S.screen='wizard';S.step=1;render()")}</div>`;
   return head('Компания','Команда',`${S.team.length} ${plural(S.team.length,'человек','человека','человек')}`,`<button class="btn pri sm" onclick="S.screen='wizard';S.step=1;render()">Пригласить ещё</button>`)+`<div class="page"><div class="box rise"><table><thead><tr><th>человек</th><th>роль</th><th>что видит</th><th>состояние</th></tr></thead><tbody>${S.team.map(t=>`<tr><td><b>${esc(t.name)}</b><div class="eyebrow" style="margin-top:3px;font-weight:600">${esc(t.contact)}</div></td><td><span class="chip">${t.role}</span></td><td style="font-size:13px;color:var(--ink-500)">${(ROLES.find(r=>r[0]===t.role)||['',''])[1]}</td><td><span class="chip warn">приглашение отправлено</span></td></tr>`).join('')}</tbody></table></div></div>`}
@@ -2364,7 +2447,7 @@ const CHANGELOG_LOCAL=[
   {v:'0.1',date:'15.09.2026',items:['Первый вход: компания, команда, объект, смета, документы','Загрузка папки объекта целиком: контракт, смета и документы читаются из ваших файлов','Данные сохраняются в облаке страницы и восстанавливаются по ИНН','Кнопка «Сообщить» — замечания уходят разработчику']}];
 function feedbackUI(){
   if(S.screen==='welcome')return '';
-  return `<button onclick="S.feedback=true;render()" style="position:fixed;right:22px;bottom:22px;z-index:70;display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:99px;background:var(--ink);color:var(--bg);font-weight:600;font-size:13.5px;box-shadow:var(--shadow)"><span style="color:#DBA765">●</span>Сообщить</button>
+  return `<button class="fb" onclick="S.feedback=true;render()"><span style="color:var(--o500)">●</span>Сообщить о проблеме</button>
   ${S.feedback?`<div style="position:fixed;inset:0;z-index:80;background:rgba(11,13,16,.45);display:grid;place-items:center;padding:16px" onclick="if(event.target===this){S.feedback=false;render()}">
     <div class="card rise" style="max-width:520px;width:100%;padding:24px">
       <div class="eyebrow" style="color:var(--o700)">Пилотная версия ${VERSION}</div>
