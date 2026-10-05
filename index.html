@@ -2644,7 +2644,7 @@ const CHANGELOG_LOCAL=[
   {v:'0.1',date:'15.09.2026',items:['Первый вход: компания, команда, объект, смета, документы','Загрузка папки объекта целиком: контракт, смета и документы читаются из ваших файлов','Данные сохраняются в облаке страницы и восстанавливаются по ИНН','Кнопка «Сообщить» — замечания уходят разработчику']}];
 function feedbackUI(){
   if(S.screen==='welcome')return '';
-  return `<button class="fb" onclick="S.feedback=true;render()"><span style="color:var(--o500)">●</span>Сообщить о проблеме</button>
+  return `<button class="fb" ${S.screen==='app'&&S.page==='ai'?'style="display:none"':''} onclick="S.feedback=true;render()"><span style="color:var(--o500)">●</span>Сообщить о проблеме</button>
   ${S.feedback?`<div style="position:fixed;inset:0;z-index:80;background:rgba(11,13,16,.45);display:grid;place-items:center;padding:16px" onclick="if(event.target===this){S.feedback=false;render()}">
     <div class="card rise" style="max-width:520px;width:100%;padding:24px">
       <div class="eyebrow" style="color:var(--o700)">Пилотная версия ${VERSION}</div>
